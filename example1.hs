@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Example1 where
 
@@ -12,9 +13,9 @@ dat = [1,2,3]::[Int]
 
 grid1 = listGrid (Dim X) 0 3 dat
 
-f = [fun| X:| a @b c | -> a+b+c |]
+f = [$fun| X:| a @b c | -> a+b+c |]
 
---grid1' = run f (defaults grid1 0)
+grid1' = run f grid1
 
 --converge = reducer (+) (+) 0 (\x -> x > 100)
 

@@ -230,6 +230,11 @@
 > instance InBoundary n (Cons n y)
 > instance InBoundary n y => InBoundary n (Cons n' y)
 
+ -- A reflective relative index is always within the boundary
+ instance InBoundary Zn Nil
+ instance InBoundary (Zn, Zn) Nil
+ instance InBoundary (Zn, Zn, Zn) Nil
+
 > -- Computes the values of a boundary region, given a boundary list
 
 > boundMap :: (IndexOps (Index d)) => Dimensionality d ->

@@ -32,17 +32,17 @@ The following is desugared from !!! inside a boundary macro
 
 Hidden by grid patterns
 
-> {-# INLINE index1Dim #-}
-> index1Dim :: (InBoundary (Nat n) b, IArray UArray a) => Nat n -> Grid (Dim d) b a -> a
-> index1Dim n (Grid arr _ c _ _) = arr!(c + (natToInt n))
+> {-# INLINE index1D #-}
+> index1D :: (InBoundary (Nat n) b, IArray UArray a) => Nat n -> Grid (Dim d) b a -> a
+> index1D n (Grid arr _ c _ _) = arr!(c + (natToInt n))
 
-> {-# INLINE index2Dim #-}
-> index2Dim :: (InBoundary (Nat n, Nat n') b, IArray UArray a) => (Nat n, Nat n') -> Grid (Dim d :* Dim d') (b, dyn) a -> a
-> index2Dim (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + natToInt n, y + natToInt n'))
+> {-# INLINE index2D #-}
+> index2D :: (InBoundary (Nat n, Nat n') b, IArray UArray a) => (Nat n, Nat n') -> Grid (Dim d :* Dim d') (b, dyn) a -> a
+> index2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + natToInt n, y + natToInt n'))
 
-> {-# INLINE index3Dim #-}
-> index3Dim :: (InBoundary (Nat n, Nat n', Nat n'') b, IArray UArray a) => (Nat n, Nat n', Nat n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) b a -> a
-> index3Dim (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + natToInt n, y + natToInt n', z + natToInt n'')
+> {-# INLINE index3D #-}
+> index3D :: (InBoundary (Nat n, Nat n', Nat n'') b, IArray UArray a) => (Nat n, Nat n', Nat n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) b a -> a
+> index3D (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + natToInt n, y + natToInt n', z + natToInt n'')
 
 > {-# INLINE indexC #-}
 > indexC :: (Dimension d, IArray UArray a) => Grid d b a -> a
@@ -103,18 +103,18 @@ Hidden by grid patterns
 
 > -- Run stencil computations
 
-> runGrid :: (IArray UArray y, Dimension d) => (Grid d b x -> y) -> Grid d b x -> Grid d (Nil, Static) y
-> runGrid f (Grid arr d c (b1, b2) boundaries) =
+> run :: (IArray UArray y, Dimension d) => (Grid d b x -> y) -> Grid d b x -> Grid d (Nil, Static) y
+> run f (Grid arr d c (b1, b2) boundaries) =
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = array (b1, b2) dats'
 >            in Grid arr' d c (b1, b2) NilB
 
 > class RunGridA dyn where
->     runGridA :: (IArray UArray a, Dimension d) =>
+>     runA :: (IArray UArray a, Dimension d) =>
 >                 (Grid d (b, dyn) a -> a) -> Grid d (b, dyn) a -> Grid d (b, dyn) a
 
 > instance RunGridA (Dynamic (Grid d (Nil, Static) a)) where
->     runGridA f (Grid arr d c (b1, b2) boundaries) = 
+>     runA f (Grid arr d c (b1, b2) boundaries) = 
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = accum (curry snd) arr dats'
 >                g0 = Grid arr' d c (b1, b2) NilB
@@ -126,7 +126,7 @@ Hidden by grid patterns
 
 
 > instance RunGridA Static where
->     runGridA f (Grid arr d c (b1, b2) boundaries) = 
+>     runA f (Grid arr d c (b1, b2) boundaries) = 
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = accum (curry snd) arr dats'
 >            in  Grid arr' d c (b1, b2) boundaries
