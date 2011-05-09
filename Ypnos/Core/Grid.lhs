@@ -119,7 +119,7 @@
 
 > instance (Ix (Index d), IArray UArray a, 
 >           Show (Index d), Show a) => Show (Grid d b a) where
->     show (Grid arr d c (b1, b2) _) = (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)
+>     show (Grid arr d c (b1, b2) _) = (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
 
 > -- Safe relative indexes
 

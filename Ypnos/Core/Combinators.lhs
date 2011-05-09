@@ -33,7 +33,7 @@ The following is desugared from !!! inside a boundary macro
 Hidden by grid patterns
 
 > {-# INLINE index1D #-}
-> index1D :: (InBoundary (Nat n) b, IArray UArray a) => Nat n -> Grid (Dim d) b a -> a
+> index1D :: (InBoundary (Nat n) b, IArray UArray a) => Nat n -> Grid (Dim d) (b, dyn) a -> a
 > index1D n (Grid arr _ c _ _) = arr!(c + (natToInt n))
 
 > {-# INLINE index2D #-}
@@ -41,7 +41,7 @@ Hidden by grid patterns
 > index2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + natToInt n, y + natToInt n'))
 
 > {-# INLINE index3D #-}
-> index3D :: (InBoundary (Nat n, Nat n', Nat n'') b, IArray UArray a) => (Nat n, Nat n', Nat n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) b a -> a
+> index3D :: (InBoundary (Nat n, Nat n', Nat n'') b, IArray UArray a) => (Nat n, Nat n', Nat n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) (b, dyn) a -> a
 > index3D (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + natToInt n, y + natToInt n', z + natToInt n'')
 
 > {-# INLINE indexC #-}

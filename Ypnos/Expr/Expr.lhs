@@ -17,18 +17,21 @@ Parser
 Data structures
 ===============
 
-> data VarP' = PatternVar String | PatternBlank
+> type Var = String
+> type HaskExp = String
+
+> data VarP' = PatternVar Var | PatternBlank
 >    deriving (Show, Data, Typeable)
 
 > data VarP = Cursor VarP' | NonCursor VarP'
 >    deriving (Show, Data, Typeable)
 
-> data Dim = X | Y | Z | T
+> data DimTag = X | Y | Z | T
 >    deriving (Show, Data, Typeable)
 
 > data GridPattern = 
->    GridPattern1D Dim [VarP] |
->    GridPattern2D Dim Dim [[VarP]] 
+>    GridPattern1D DimTag [VarP] |
+>    GridPattern2D DimTag DimTag[[VarP]] 
 >    deriving (Show, Data, Typeable)
 
 > data GridFun = GridFun GridPattern String
@@ -46,13 +49,89 @@ General parser combinators
 
 > parens =  Token.parens lexer
 > maybeParens x = parens (maybeParens x) <|> x
+> constructor = do { c <- upper; cs <- many idchar; return (c:cs) }
 > word = (many1 letter) <|> string "_"
 > small = lower <|> char '_'
 > idchar = small <|> upper <|> digit <|> char '\''
 > ident  =  do{ c <- small ; cs <- many idchar; return (c:cs) }
 > natural = Token.natural lexer
 
-Parse grid definitions
+> tillEndOfLine = do { eof;
+>                      return "" }
+>                 <|>
+>                 do { c <- anyChar;
+>                      if (c=='\n') then return ""
+>                        else do cs <- tillEndOfLine
+>                                return (c:cs) }
+
+
+Parse boundaries
+================
+
+> data SubRegionDescriptor = Inner Var | Negative Int | Positive Int
+>     deriving (Show, Data, Typeable)
+
+> type RegionDescriptor = [SubRegionDescriptor]
+
+> data BoundaryCase =   Range RegionDescriptor RegionDescriptor HaskExp
+>                      | Specific RegionDescriptor HaskExp
+>                      | Parameterised RegionDescriptor Var HaskExp
+>                        
+>     deriving (Show, Data, Typeable)
+
+> data BoundaryDef = BoundaryDef String [BoundaryCase] 
+>     deriving (Show, Data, Typeable)
+
+> subRegionDescriptor :: Parser SubRegionDescriptor
+> subRegionDescriptor = (do char '+'
+>                           n <- natural
+>                           return $ Positive $ fromInteger n) <|>
+>                       (do char '-'
+>                           n <- natural
+>                           return $ Negative $ fromInteger n) <|> 
+>                       (do char '*'
+>                           v <- ident
+>                           return $ Inner v)
+
+> regionDescriptor :: Parser RegionDescriptor
+> regionDescriptor = try ((do sr <- subRegionDescriptor
+>                             return [sr])) <|>
+>                    (do char '('
+>                        srs <- sepBy (subRegionDescriptor) (char ',') 
+>                        char ')'
+>                        return srs)
+
+> boundaryCase :: Parser BoundaryCase
+> boundaryCase = (try 
+>                  (do spaces
+>                      string "from"
+>                      i1 <- regionDescriptor
+>                      string "to"
+>                      i2 <- regionDescriptor
+>                      string "->"
+>                      exp <- tillEndOfLine
+>                      return $ Range i1 i2 exp)) <|>
+>                (do spaces
+>                    i1 <- regionDescriptor
+>                    spaces
+>                    x <- (try (do var <- ident
+>                                  spaces
+>                                  string "->"
+>                                  exp <- tillEndOfLine
+>                                  return $ Parameterised i1 var exp)) <|>
+>                            (do string "->"
+>                                exp <- tillEndOfLine
+>                                return $ Specific i1 exp)
+>                    return x)
+                     
+> parseBoundaryDef :: Parser BoundaryDef
+> parseBoundaryDef = do elementType <- constructor
+>                       cases <- many boundaryCase 
+>                       eof                        
+>                       return $ BoundaryDef elementType cases                       
+
+
+Parse grid definitions (OLD - to be removed)
 ======================
 
 > parseDimVector :: Parser DimVector
@@ -118,7 +197,7 @@ Parse grid patterns
 >                    }}
 
 
-> dim :: Parser Dim
+> dim :: Parser DimTag
 > dim = do { string "X"; return X; } <|>
 >       do { string "Y"; return Y; } <|>
 >       do { string "Z"; return Z; } <?> "X, Y, or Z as dimensions"
