@@ -69,7 +69,7 @@ Parse boundaries
 ================
 
 > data SubRegionDescriptor = Inner Var | Negative Int | Positive Int
->     deriving (Show, Data, Typeable)
+>     deriving (Show, Data, Typeable, Eq)
 
 > type RegionDescriptor = [SubRegionDescriptor]
 
@@ -97,32 +97,36 @@ Parse boundaries
 > regionDescriptor = try ((do sr <- subRegionDescriptor
 >                             return [sr])) <|>
 >                    (do char '('
->                        srs <- sepBy (subRegionDescriptor) (char ',') 
+>                        srs <- sepBy (subRegionDescriptor) (do {spaces; char ','; spaces}) 
 >                        char ')'
 >                        return srs)
 
 > boundaryCase :: Parser BoundaryCase
 > boundaryCase = (try 
+>                 (do spaces
+>                     i1 <- regionDescriptor
+>                     spaces
+>                     x <- (try (do var <- ident
+>                                   spaces
+>                                   string "->"
+>                                   exp <- tillEndOfLine
+>                                   return $ Parameterised i1 var exp)) <|>
+>                             (do string "->"
+>                                 exp <- tillEndOfLine
+>                                 return $ Specific i1 exp)
+>                     return x)) <|>
 >                  (do spaces
 >                      string "from"
+>                      spaces
 >                      i1 <- regionDescriptor
+>                      spaces
 >                      string "to"
+>                      spaces
 >                      i2 <- regionDescriptor
+>                      spaces
 >                      string "->"
 >                      exp <- tillEndOfLine
->                      return $ Range i1 i2 exp)) <|>
->                (do spaces
->                    i1 <- regionDescriptor
->                    spaces
->                    x <- (try (do var <- ident
->                                  spaces
->                                  string "->"
->                                  exp <- tillEndOfLine
->                                  return $ Parameterised i1 var exp)) <|>
->                            (do string "->"
->                                exp <- tillEndOfLine
->                                return $ Specific i1 exp)
->                    return x)
+>                      return $ Range i1 i2 exp)
                      
 > parseBoundaryDef :: Parser BoundaryDef
 > parseBoundaryDef = do elementType <- constructor

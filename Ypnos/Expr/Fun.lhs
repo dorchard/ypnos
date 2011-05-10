@@ -81,15 +81,20 @@
 >          _ -> [])
 
 > toGrid2DLets l c r = 
->     (toGrid2DVLets l (-1) 1)++(toGrid2DVLets r 1 1)++(toGrid2DVLets c 0 1)
+>     (toGrid2DVLets l (-1) 1)++(toGrid2DVLets c 0 1)++(toGrid2DVLets r 1 1)
 >     where
 >        toGrid2DVLets [] s n = []
 >        toGrid2DVLets ((t,c',b):ys) s n = 
 >            let
 >                top = toIndex2D (s, -1) (n, 1) t
->                centre = case c' of
->                           (PatternVar x) -> [mkLetBind x [|$(fvar "indexC") $(fvar "reserved_grid")|]]
->                           _ -> []
+>                centre = toIndex2D (s, 0) (n, 1) [c']
+>                         -- Could use indexC for the cursor pattern, but not really necessary
+>                         -- if (s==0) then 
+>                         --     case c' of
+>                         --        (PatternVar x) -> [mkLetBind x [|$(fvar "indexC") $(fvar "reserved_grid")|]]
+>                         --        _ -> []
+>                         -- else
+>                         --     toIndex2D (s, 0) (n, 1) [c']
 >                bottom = toIndex2D (s, 1) (n, 1) b
 >            in
 >                (top++centre++bottom)++(toGrid2DVLets ys s (n+1))

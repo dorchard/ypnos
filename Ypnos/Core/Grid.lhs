@@ -78,15 +78,15 @@
 > -- Dimensions
 
 > data X = X
+> data Y = Y
 
- data Y = Y
  data Z = Z
 
 > class DimIdentifier d
 
 > instance DimIdentifier X
+> instance DimIdentifier Y
 
- instance DimIdentifier Y
  instance DimIdentifier Z
 
 > class (Ix (Index d), IndexOps (Index d)) => Dimension d
@@ -230,10 +230,12 @@
 > instance InBoundary n (Cons n y)
 > instance InBoundary n y => InBoundary n (Cons n' y)
 
- -- A reflective relative index is always within the boundary
- instance InBoundary Zn Nil
- instance InBoundary (Zn, Zn) Nil
- instance InBoundary (Zn, Zn, Zn) Nil
+> -- A zero relative index is always within the boundary
+> instance InBoundary (Nat Zn) Nil
+> instance InBoundary (Nat Zn, Nat Zn) Nil
+> instance InBoundary (Nat Zn, Nat Zn, Nat Zn) Nil
+> instance InBoundary (Nat Zn, Nat Zn, Nat Zn, Nat Zn) Nil
+> instance InBoundary (Nat Zn, Nat Zn, Nat Zn, Nat Zn, Nat Zn) Nil
 
 > -- Computes the values of a boundary region, given a boundary list
 
