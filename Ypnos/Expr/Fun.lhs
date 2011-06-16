@@ -52,25 +52,28 @@
 >             bindings = interpretPattern pattern
 
 
-> intToNatExp :: Int -> ExpQ
-> intToNatExp 0 = [| $(conE $ mkName "Zn") |]
-> intToNatExp n = if n < 0 then
->                   [| $(conE $ mkName "Neg") $(intToNatExp (-n)) |]
+> natToNatExp :: Int -> ExpQ
+> natToNatExp 0 = [| $(conE $ mkName "Zn") |]
+> natToNatExp n = [| $(conE $ mkName "S") $(natToNatExp (n-1)) |]
+
+> intToIntExp :: Int -> ExpQ
+> intToIntExp n = if n < 0 then
+>                   [| $(conE $ mkName "Neg") $(natToNatExp (-n)) |]
 >                 else
->                   [| $(conE $ mkName "S") $(intToNatExp (n-1)) |]
+>                   [| $(conE $ mkName "Pos") $(natToNatExp n) |]
 >                 
 
 > mkLetBind v e = valD (varP $ mkName v) (normalB e) []
 
 > toIndex1D s n [] = []
 > toIndex1D s n ((PatternBlank):xs) = toIndex1D s (n+1) xs
-> toIndex1D s n ((PatternVar v):xs) = (mkLetBind v [| $(fvar "index1D") $(intToNatExp (s*n)) $(fvar "reserved_grid") |])
+> toIndex1D s n ((PatternVar v):xs) = (mkLetBind v [| $(fvar "index1D") $(intToIntExp (s*n)) $(fvar "reserved_grid") |])
 >                                     :(toIndex1D s (n+1) xs)
 
 > toIndex2D _ _ [] = []
 > toIndex2D (s1, s2) (n1, n2) ((PatternBlank):xs) = toIndex2D (s1, s2) (n1, n2+1) xs
 > toIndex2D (s1, s2) (n1, n2) ((PatternVar v):xs) = (mkLetBind v [| $(fvar "index2D") 
->                                                                 ($(intToNatExp $ s1*n1), $(intToNatExp $ s2*n2))
+>                                                                 ($(intToIntExp $ s1*n1), $(intToIntExp $ s2*n2))
 >                                                                 $(fvar "reserved_grid") |])
 >                                                   :(toIndex2D (s1, s2) (n1, n2+1) xs)
 

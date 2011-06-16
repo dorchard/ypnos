@@ -24,27 +24,42 @@
 
 > data Zn
 > data S n 
-> data Neg n
 
 > data Nat n where
 >     Zn :: Nat Zn
 >     S :: Nat n -> Nat (S n)
->     Neg :: Nat n -> Nat (Neg n)
+
+> data Neg n
+> data Pos n
+
+> data IntT n where
+>     Neg :: Nat (S n) -> IntT (Neg (S n))
+>     Pos :: Nat n -> IntT (Pos n)
 
 > natToInt :: Nat n -> Int
 > natToInt Zn = 0
 > natToInt (S n) = 1 + natToInt n
-> natToInt (Neg n) = - natToInt n
+
+> intTtoInt :: IntT n -> Int
+> intTtoInt (Pos n) = natToInt n
+> intTtoInt (Neg n) = - natToInt n
 
 > -- Some helpers, synonyms for numbers
 
 > instance Show (Nat Zn) where
 >     show Zn = "Z"
+
 > instance Show (Nat n) => Show (Nat (S n)) where
 >     show (S n) = "S" ++ (show n)
-> instance Show (Nat n) => Show (Nat (Neg n)) where
+
+> instance (Show (Nat (S n)), Show (Nat n)) => Show (IntT (Neg (S n))) where
 >     show (Neg n) = "-" ++ (show n)
 
+> instance Show (Nat n) => Show (IntT (Pos n)) where
+>     show (Pos n) = "+" ++ (show n)
+
+
+> {-
 > type Zero = Zn
 > type One = S Zn
 > type Two = S (S Zn)
@@ -63,6 +78,7 @@
 > data instance NatRepr (S (S (S (S (S Zn))))) = Five
 > data instance NatRepr (S (S (S (S (S (S Zn)))))) = Six
 > data instance NatRepr (S (S (S (S (S (S (S Zn))))))) = Seven
+> -}
 
 > -- Type-level list (hetro-geneous list)
 
@@ -71,9 +87,12 @@
 
 > type (:::) = Cons
 > 
+
+> {- 
 > data List l where
 >     Nil :: List Nil
 >     Cons :: n -> List m -> List (Cons n m)
+> -}
 
 > -- Dimensions
 
@@ -124,8 +143,8 @@
 > -- Safe relative indexes
 
 > type family InnerToZn t
-> type instance InnerToZn Int = Nat Zn
-> type instance InnerToZn (Nat n) = Nat n
+> type instance InnerToZn Int = IntT (Pos Zn)
+> type instance InnerToZn (IntT n) = IntT n
 > type instance InnerToZn (a, b) = (InnerToZn a, InnerToZn b)
 > type instance InnerToZn (a, b, c) = (InnerToZn a, InnerToZn b, InnerToZn c)
 
@@ -143,13 +162,20 @@
 >     Dynamic :: ((ix, g) -> a) -> BoundaryFun ix a (Dynamic g)
 
 > data BoundaryList t dyn lower upper d a where
->     NilB :: BoundaryList Nil Static () () d a
+>     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
 >     ConsB :: BuildBoundary d ix dyn (Grid d (Nil, Static) a) => 
 >               BoundaryFun ix a dyn
 >               -> BoundaryList t dyn' lower upper d a 
 >               -> BoundaryList (Cons ix t) (Dynamism dyn dyn') (Lower ix lower) (Upper ix upper) d a
 
 > -- Type functions for combining inductively defined boundary info
+
+> type family Origin d
+> type instance Origin (Dim d) = IntT (Pos Zn)
+> type instance Origin ((Dim d) :* (Dim d')) = (IntT (Pos Zn), IntT (Pos Zn))
+> type instance Origin ((Dim d) :* ((Dim d') :* (Dim d''))) = (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn))
+> type instance Origin ((Dim x) :* ((Dim y) :* ((Dim z) :* (Dim w)))) = (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn))
+> type instance Origin ((Dim x) :* ((Dim y) :* ((Dim z) :* ((Dim w) :* (Dim u))))) = (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn))
 
 > type family Dynamism t t'
 > type instance Dynamism Static Static = Static
@@ -158,68 +184,63 @@
 > type instance Dynamism (Dynamic g) (Dynamic g) = Dynamic g
      
 > type family Upper t t'
-> type instance Upper (Neg n) () = Zn
-> type instance Upper (S n) () = S n
-> type instance Upper Zn () = Zn
-> type instance Upper Int () = Nat Zn
-> type instance Upper (Nat n) () = Nat (Upper n ())
-> type instance Upper (a, b) () = (Upper a (), Upper b ())
-> type instance Upper (a, b, c) () = (Upper a (), Upper b (), Upper c ())
+
+ type instance Upper (Neg n) () = Zn
+ type instance Upper (S n) () = S n
+ type instance Upper Zn () = Zn
+ type instance Upper Int () = Nat Zn
+ type instance Upper (Nat n) () = Nat (Upper n ())
+ type instance Upper (a, b) () = (Upper a (), Upper b ())
+ type instance Upper (a, b, c) () = (Upper a (), Upper b (), Upper c ())
 
 > type instance Upper Zn Zn = Zn
 > type instance Upper Zn (S n) = S n
-> type instance Upper Zn (Neg n) = Zn
-> type instance Upper Zn Int = Zn
 > type instance Upper (S n) Zn = S n
 > type instance Upper (S n) (S m) = S (Upper n m)
-> type instance Upper (S n) (Neg m) = S n
-> type instance Upper (S n) Int = S n
-> type instance Upper (Neg n) Zn = Zn
-> type instance Upper (Neg n) (S m) = S m
+
+> type instance Upper (Pos n) (Pos m) = Pos (Upper n m)
+> type instance Upper (Neg n) (Pos m) = Pos m
+> type instance Upper (Pos n) (Neg m) = Pos n
 > type instance Upper (Neg n) (Neg m) = Neg (Lower n m)
-> type instance Upper (Neg n) Int = Neg n
-> type instance Upper Int Zn = Int
-> type instance Upper Int (S n) = S n
-> type instance Upper Int (Neg n) = Int
+
+> type instance Upper Int (IntT (Pos n)) = IntT (Pos n)
+> type instance Upper Int (IntT (Neg n)) = Int
+> type instance Upper (IntT (Pos n)) Int = IntT (Pos n)
+> type instance Upper (IntT (Neg n)) Int = Int
 > type instance Upper Int Int = Int
 
-> type instance Upper (Nat a) Int = Nat a
-> type instance Upper Int (Nat a) = Nat a
-> type instance Upper (Nat a) (Nat b) = Nat (Upper a b)
+> type instance Upper (IntT a) (IntT b) = IntT (Upper a b)
 > type instance Upper (a, b) (c, d) = (Upper a c, Upper b d)
 > type instance Upper (a, b, c) (d, e, f) = (Upper a d, Upper b e, Upper c f)
 > type instance Upper (a, b, c, d) (e, f, g, h) = (Upper a e, Upper b f, Upper c g, Upper d h)
 
 > type family Lower t t'
-> type instance Lower (Neg n) () = Neg n
-> type instance Lower (S n) () = Zn
-> type instance Lower Zn () = Zn
-> type instance Lower Int () = Nat Zn
-> type instance Lower (Nat n) () = Nat (Lower n ())
-> type instance Lower (a, b) () = (Lower a (), Lower b ())
-> type instance Lower (a, b, c) () = (Lower a (), Lower b (), Lower c ())
+
+ type instance Lower (Neg n) () = Neg n
+ type instance Lower (S n) () = Zn
+ type instance Lower Zn () = Zn
+ type instance Lower Int () = Nat Zn
+ type instance Lower (Nat n) () = Nat (Lower n ())
+ type instance Lower (a, b) () = (Lower a (), Lower b ())
+ type instance Lower (a, b, c) () = (Lower a (), Lower b (), Lower c ())
 
 > type instance Lower Zn Zn = Zn
 > type instance Lower Zn (S n) = Zn
-> type instance Lower Zn (Neg n) = Neg n
-> type instance Lower Zn Int = Zn
 > type instance Lower (S n) Zn = Zn
 > type instance Lower (S n) (S m) = S (Lower n m)
-> type instance Lower (S n) (Neg m) = Neg m
-> type instance Lower (S n) Int = S n
-> type instance Lower (Neg n) Zn = Neg n
-> type instance Lower (Neg n) (S m) = Neg n
+
+> type instance Lower (Pos n) (Pos m) = Pos (Lower n m)
+> type instance Lower (Pos n) (Neg m) = Neg m
+> type instance Lower (Neg n) (Pos m) = Neg n
 > type instance Lower (Neg n) (Neg m) = Neg (Upper n m)
-> type instance Lower (Neg n) Int = Neg n
-> type instance Lower Int Zn = Int
-> type instance Lower Int (S n) = Int
-> type instance Lower Int (Neg n) = Neg n
+
+> type instance Lower Int (IntT (Pos n)) = Int
+> type instance Lower Int (IntT (Neg n)) = IntT (Neg n)
+> type instance Lower (IntT (Pos n)) Int = Int
+> type instance Lower (IntT (Neg n)) Int = IntT (Neg n)
 > type instance Lower Int Int = Int
 
-> type instance Lower (Nat a) (Nat b) = Nat (Lower a b)
-> type instance Lower Int (Nat a) = Nat a
-> type instance Lower (Nat a) Int = Nat a
-
+> type instance Lower (IntT a) (IntT b) = IntT (Lower a b)
 > type instance Lower (a, b) (c, d) = (Lower a c, Lower b d)
 > type instance Lower (a, b, c) (d, e, f) = (Lower a d, Lower b e, Lower c f)
 > type instance Lower (a, b, c, d) (e, f, g, h) = (Lower a e, Lower b f, Lower c g, Lower d h)
@@ -231,11 +252,11 @@
 > instance InBoundary n y => InBoundary n (Cons n' y)
 
 > -- A zero relative index is always within the boundary
-> instance InBoundary (Nat Zn) Nil
-> instance InBoundary (Nat Zn, Nat Zn) Nil
-> instance InBoundary (Nat Zn, Nat Zn, Nat Zn) Nil
-> instance InBoundary (Nat Zn, Nat Zn, Nat Zn, Nat Zn) Nil
-> instance InBoundary (Nat Zn, Nat Zn, Nat Zn, Nat Zn, Nat Zn) Nil
+> instance InBoundary (IntT (Pos Zn)) Nil
+> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
 
 > -- Computes the values of a boundary region, given a boundary list
 
@@ -271,20 +292,24 @@
 >     typeToIntIx _ = 1 + (typeToIntIx (undefined::(Nat n)))
 >     typeToSymIx _ = S (typeToSymIx (undefined::(Nat n)))
 
-> instance ReifiableIx (Nat n) Int => ReifiableIx (Nat (Neg n)) Int where
->     typeToIntIx _ = - (typeToIntIx (undefined::(Nat n)))
->     typeToSymIx _ = Neg (typeToSymIx (undefined::(Nat n)))
+> instance ReifiableIx (Nat (S n)) Int => ReifiableIx (IntT (Neg (S n))) Int where 
+>     typeToIntIx _ = - (typeToIntIx (undefined::(Nat (S n))))
+>     typeToSymIx _ = Neg (typeToSymIx (undefined::(Nat (S n))))
 
-> instance (ReifiableIx (Nat a) Int, ReifiableIx (Nat b) Int) => 
->          ReifiableIx (Nat a, Nat b) (Int, Int) where
->     typeToIntIx _ = (typeToIntIx (undefined::(Nat a)), typeToIntIx (undefined::(Nat b)))
->     typeToSymIx _ = (typeToSymIx (undefined::(Nat a)), typeToSymIx (undefined::(Nat b)))
+> instance ReifiableIx (Nat n) Int => ReifiableIx (IntT (Pos n)) Int where 
+>     typeToIntIx _ = typeToIntIx (undefined::(Nat n))
+>     typeToSymIx _ = Pos (typeToSymIx (undefined::(Nat n)))
 
-> instance (ReifiableIx (Nat a) Int, ReifiableIx (Nat b) Int, ReifiableIx (Nat c) Int) =>
->          ReifiableIx (Nat a, Nat b, Nat c) (Int, Int, Int) where
->     typeToIntIx _ = (typeToIntIx (undefined::(Nat a)), typeToIntIx (undefined::(Nat b)), typeToIntIx (undefined::(Nat c)))
->     typeToSymIx _ = (typeToSymIx (undefined::(Nat a)), typeToSymIx (undefined::(Nat b)),
->                                typeToSymIx (undefined::(Nat c)))
+> instance (ReifiableIx (IntT a) Int, ReifiableIx (IntT b) Int) => 
+>          ReifiableIx (IntT a, IntT b) (Int, Int) where
+>     typeToIntIx _ = (typeToIntIx (undefined::(IntT a)), typeToIntIx (undefined::(IntT b)))
+>     typeToSymIx _ = (typeToSymIx (undefined::(IntT a)), typeToSymIx (undefined::(IntT b)))
+
+> instance (ReifiableIx (IntT a) Int, ReifiableIx (IntT b) Int, ReifiableIx (IntT c) Int) =>
+>          ReifiableIx (IntT a, IntT b, IntT c) (Int, Int, Int) where
+>     typeToIntIx _ = (typeToIntIx (undefined::(IntT a)), typeToIntIx (undefined::(IntT b)), typeToIntIx (undefined::(IntT c)))
+>     typeToSymIx _ = (typeToSymIx (undefined::(IntT a)), typeToSymIx (undefined::(IntT b)),
+>                                typeToSymIx (undefined::(IntT c)))
 
 
 > -- Various operations on indices
@@ -340,91 +365,91 @@
 
      buildBoundary :: Dimensionality d -> ((t, g) -> a) -> (Index d, Index d) -> g -> [(Index d, a)]
 
-> instance (ReifiableIx (Nat n) Int) => BuildBoundary (Dim d) (Nat n) (Dynamic g) g where
+> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) (Dynamic g) g where
 >     buildBoundary d (Dynamic f) (x0, xn) grid =
 >         let
->             x = typeToIntIx (undefined::(Nat n))
+>             x = typeToIntIx (undefined::(IntT n))
 >             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >         in
->             [(x' , f (typeToSymIx (undefined::(Nat n)), grid))]
+>             [(x' , f (typeToSymIx (undefined::(IntT n)), grid))]
 
-> instance (ReifiableIx (Nat n) Int) => BuildBoundary (Dim d) (Nat n) Static g where
+> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Static g where
 >     buildBoundary d (Static f) (x0, xn) grid =
 >         let
->             x = typeToIntIx (undefined::(Nat n))
+>             x = typeToIntIx (undefined::(IntT n))
 >             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >         in
->             [(x' , f (typeToSymIx (undefined::(Nat n))))]
+>             [(x' , f (typeToSymIx (undefined::(IntT n))))]
      
-> instance (ReifiableIx (Nat n) Int, ReifiableIx (Nat m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Nat n, Nat m) (Dynamic g) g  where
+> instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) (Dynamic g) g  where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid = 
 >         let 
->             x = typeToIntIx (undefined::(Nat n))
->             y = typeToIntIx (undefined::(Nat m))
+>             x = typeToIntIx (undefined::(IntT n))
+>             y = typeToIntIx (undefined::(IntT m))
 >             x' = if (x>0) then (x+xn) 
 >                           else (x0+x)
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >          in
->             [((x, y), f ((typeToSymIx (undefined::(Nat n)), typeToSymIx (undefined::(Nat m))), grid))] 
+>             [((x, y), f ((typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))), grid))] 
 
 
-> instance (ReifiableIx (Nat n) Int, ReifiableIx (Nat m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Nat n, Nat m) Static g where
+> instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Static g where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid = 
 >         let 
->             x = typeToIntIx (undefined::(Nat n))
->             y = typeToIntIx (undefined::(Nat m))
+>             x = typeToIntIx (undefined::(IntT n))
+>             y = typeToIntIx (undefined::(IntT m))
 >             x' = if (x>0) then (x+xn) 
 >                           else (x0+x)
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >          in
->             [((x, y), f (typeToSymIx (undefined::(Nat n)), typeToSymIx (undefined::(Nat m))))]
+>             [((x, y), f (typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))))]
 
-> instance (ReifiableIx (Nat n) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Nat n, Int) (Dynamic g) g where
+> instance (ReifiableIx (IntT n) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) (Dynamic g) g where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid =
 >         let
->             x = typeToIntIx (undefined::(Nat n))
+>             x = typeToIntIx (undefined::(IntT n))
 >             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >         in
 >             map (\y -> ((x', y),
->                 f ((typeToSymIx (undefined::(Nat n)), y), grid))) (range (y0, yn))
+>                 f ((typeToSymIx (undefined::(IntT n)), y), grid))) (range (y0, yn))
 
-> instance (ReifiableIx (Nat n) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Nat n, Int) Static g where
+> instance (ReifiableIx (IntT n) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) Static g where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid =
 >         let
->             x = typeToIntIx (undefined::(Nat n))
+>             x = typeToIntIx (undefined::(IntT n))
 >             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >         in
 >             map (\y -> ((x', y),
->                 f (typeToSymIx (undefined::(Nat n)), y))) (range (y0, yn))
+>                 f (typeToSymIx (undefined::(IntT n)), y))) (range (y0, yn))
 
-> instance (ReifiableIx (Nat m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Int, Nat m) (Dynamic g) g where
+> instance (ReifiableIx (IntT m) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) (Dynamic g) g where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid =
 >         let
->             y = typeToIntIx (undefined::(Nat m))
+>             y = typeToIntIx (undefined::(IntT m))
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >         in
 >             map (\x -> ((x, y'),
->                  f ((x, typeToSymIx (undefined::(Nat m))), grid))) (range (x0, xn))
+>                  f ((x, typeToSymIx (undefined::(IntT m))), grid))) (range (x0, xn))
 
-> instance (ReifiableIx (Nat m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Int, Nat m) Static g where
+> instance (ReifiableIx (IntT m) Int) =>
+>          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) Static g where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid =
 >         let
->             y = typeToIntIx (undefined::(Nat m))
+>             y = typeToIntIx (undefined::(IntT m))
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >         in
 >             map (\x -> ((x, y'),
->                  f (x, typeToSymIx (undefined::(Nat m))))) (range (x0, xn))
+>                  f (x, typeToSymIx (undefined::(IntT m))))) (range (x0, xn))

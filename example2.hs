@@ -15,10 +15,11 @@ ave2D = [fun| X*Y:| a  b  c |
 boundary2D = [boundary| Double from (-1, -1) to (+1, +1) -> 0.0 |]
 
 
-gridData = [1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]::[Double]
-grid1 = listGridWithBoundaries (Dim X :* Dim Y) (0, 0) (3, 3) gridData boundary2D
+gridDat = [1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]::[Double]
+grid1 = listGridWithBoundaries (Dim X :* Dim Y) (0, 0) (3, 3) gridDat boundary2D
 
 grid1' = run ave2D grid1
+grid1'' = runA ave2D grid1
 
 -- Expected
 -- Grid <X> * <Y> * <> cursor = Ix[0,0] bounds = (Ix[0,0], Ix[2,2])

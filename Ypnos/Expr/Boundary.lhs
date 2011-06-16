@@ -33,13 +33,16 @@
 
 
 > interpret :: BoundaryDef -> Maybe (Q Exp)
-> interpret (BoundaryDef elementType cases) = (show (BoundaryDef elementType cases)) `trace` interpretCases elementType cases
+> interpret (BoundaryDef elementType cases) = interpretCases elementType cases
+
+> appendInterpretedCases [] ys = ys
+> appendInterpretedCases (x:xs) ys = [| ConsB $(x) $(appendInterpretedCases xs ys) |]
 
 > interpretCases :: String -> [BoundaryCase] -> Maybe (Q Exp)
 > interpretCases eT [] = Just $ [| NilB |]
-> interpretCases eT (x:xs) = do x' <- interpretCase eT x
+> interpretCases eT (x:xs) = do let x' = interpretCase eT x
 >                               xs' <- interpretCases eT xs
->                               return $ [| ConsB $(x') $(xs') |]
+>                               return $ appendInterpretedCases x' xs'
 
  interpretCase (Range i1 i2 exp) = 
 
@@ -59,21 +62,58 @@
 >                                                      [t| $(dimN) :* $(typ) |])
 >                                                          
 >                                                      
->                                  
+> regionLTE (Negative x) (Positive y) = True
+> regionLTE (Negative x) (Negative y) = x>=y
+> regionLET (Positive x) (Negative y) = False
+> regionLET (Positive x) (Positive y) = x<=y
 
+> descriptorRange (Negative 0) (Positive x) = (Inner "a") : descriptorRange (Positive 1) (Positive x)
+> descriptorRange (Negative x) (Positive y) = (Negative x) : descriptorRange (Negative (x-1)) (Positive y)
+> descriptorRange (Positive x) (Positive y) = if (x<=y) then
+>                                               (Positive x) : descriptorRange (Positive (x+1)) (Positive y)
+>                                             else
+>                                               []
+> descriptorRange (Negative x) (Negative y) = if (x>=y) then 
+>                                               (Negative x) : descriptorRange (Negative (x-1)) (Negative y)
+>                                             else
+>                                               [] 
+
+
+> regionRange :: RegionDescriptor -> RegionDescriptor -> [RegionDescriptor]
+> regionRange x y = (filter (\x -> not $ allInner x)) $ regionRange' x y
+>                     where 
+>                       allInner [] = True
+>                       allInner (x:xs) = (x==(Inner "a")) && (allInner xs)
+> regionRange' [x] [y] = map (\x -> [x]) $ descriptorRange x y
+> regionRange' (x:xs) (y:ys) = concatMap (\x' -> map (\xs' -> x':xs') (regionRange' xs ys)) $ descriptorRange x y
+
+                             
+> interpretCase elementType (Range from to exp) = 
+>   let wellFormed = map (\(a, b) -> 
+>                      case (a, b) of 
+>                          (Inner _, _) -> error "Boundary region must be from a numerical offset, e.g. -1, not *v"
+>                          (_, Inner _) -> error "Boundary region must be from a numerical offset, e.g. -1, not *v"
+>                          (x, y) -> if (regionLTE x y) then 
+>                                       True
+>                                    else
+>                                       error "Syntax from x to y must have x less than y in all components") (zip from to)
+>   in
+>      concatMap (\r -> interpretCase elementType (Specific r exp)) $ regionRange from to
+>                     
+>     
 > interpretCase elementType (Specific i exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i                                     
 >                 in case parseToTH exp of
 >                       Left x -> error x
->                       Right expr -> Just fn 
+>                       Right expr -> [fn]
 >                          where 
 >                            typ' = [t| BoundaryFun $(typ) $(conT $ mkName elementType) Static |]
 >                            fn = sigE (appE (conE $ mkName "Static") (lamE [pat] (return $ expr))) typ'
 > interpretCase elementType (Parameterised i var exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i
 >                 in case parseToTH exp of
->                      Left x -> ("blarg" ++ show x) `trace` error x
->                      Right expr -> Just fn
+>                      Left x -> error x
+>                      Right expr -> [fn]
 >                        where
 >                          elemTypeConstr = conT $ mkName elementType
 >                          (tvs, pred, dimTyp) = descriptorToDimensionality i
@@ -85,19 +125,23 @@
 
 > natPat :: Int -> (Q Pat, Q Type)
 > natPat 0 = (conP (mkName "Zn") [], conT (mkName "Zn"))
-> natPat n = if n < 0 then
+> natPat n = let (par, typ) = natPat (n-1)
+>            in (conP (mkName "S") [par], appT (conT $ mkName "S") typ)
+
+> intPat :: Int -> (Q Pat, Q Type)
+> intPat n = if n < 0 then
 >                let (par, typ) = natPat (-n)
->                in (conP (mkName "Neg") [par], appT (conT $ mkName "Neg") typ)
+>                in (conP (mkName "Neg") [par], appT (conT $ mkName "IntT") (appT (conT $ mkName "Neg") typ))
 >            else 
->                let (par, typ) = natPat (n-1)
->                in (conP (mkName "S") [par], appT (conT $ mkName "S") typ)
+>                let (par, typ) = natPat n
+>                in (conP (mkName "Pos") [par], appT (conT $ mkName "IntT") (appT (conT $ mkName "Pos") typ))
+
+
 
 > interpretSubRegion :: SubRegionDescriptor -> (Q Pat, Q Type)
 > interpretSubRegion (Inner v) = (varP $ mkName v, conT $ mkName "Int")
-> interpretSubRegion (Negative n) = let (pat, typ) = natPat (-n)
->                                   in (pat, appT (conT $ mkName "Nat") typ)
-> interpretSubRegion (Positive n) = let (pat, typ) = natPat n
->                                   in (pat, appT (conT $ mkName "Nat") typ)
+> interpretSubRegion (Negative n) = intPat (-n)
+> interpretSubRegion (Positive n) = intPat n
 
 > interpretRegionDescriptor :: RegionDescriptor -> (Q Pat, Q Type)
 > interpretRegionDescriptor regions = let (pats, types) = unzip $ map interpretSubRegion regions
