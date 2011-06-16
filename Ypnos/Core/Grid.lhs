@@ -166,7 +166,7 @@
 >     ConsB :: BuildBoundary d ix dyn (Grid d (Nil, Static) a) => 
 >               BoundaryFun ix a dyn
 >               -> BoundaryList t dyn' lower upper d a 
->               -> BoundaryList (Cons ix t) (Dynamism dyn dyn') (Lower ix lower) (Upper ix upper) d a
+>               -> BoundaryList (Cons ix t) (Dynamism dyn dyn') (Min ix lower) (Max ix upper) d a
 
 > -- Type functions for combining inductively defined boundary info
 
@@ -183,67 +183,51 @@
 > type instance Dynamism (Dynamic g) Static = Dynamic g
 > type instance Dynamism (Dynamic g) (Dynamic g) = Dynamic g
      
-> type family Upper t t'
+> type family Max t t'
 
- type instance Upper (Neg n) () = Zn
- type instance Upper (S n) () = S n
- type instance Upper Zn () = Zn
- type instance Upper Int () = Nat Zn
- type instance Upper (Nat n) () = Nat (Upper n ())
- type instance Upper (a, b) () = (Upper a (), Upper b ())
- type instance Upper (a, b, c) () = (Upper a (), Upper b (), Upper c ())
+> type instance Max Zn Zn = Zn
+> type instance Max Zn (S n) = S n
+> type instance Max (S n) Zn = S n
+> type instance Max (S n) (S m) = S (Max n m)
 
-> type instance Upper Zn Zn = Zn
-> type instance Upper Zn (S n) = S n
-> type instance Upper (S n) Zn = S n
-> type instance Upper (S n) (S m) = S (Upper n m)
+> type instance Max (Pos n) (Pos m) = Pos (Max n m)
+> type instance Max (Neg n) (Pos m) = Pos m
+> type instance Max (Pos n) (Neg m) = Pos n
+> type instance Max (Neg n) (Neg m) = Neg (Min n m)
 
-> type instance Upper (Pos n) (Pos m) = Pos (Upper n m)
-> type instance Upper (Neg n) (Pos m) = Pos m
-> type instance Upper (Pos n) (Neg m) = Pos n
-> type instance Upper (Neg n) (Neg m) = Neg (Lower n m)
+> type instance Max Int (IntT (Pos n)) = IntT (Pos n)
+> type instance Max Int (IntT (Neg n)) = Int
+> type instance Max (IntT (Pos n)) Int = IntT (Pos n)
+> type instance Max (IntT (Neg n)) Int = Int
+> type instance Max Int Int = Int
 
-> type instance Upper Int (IntT (Pos n)) = IntT (Pos n)
-> type instance Upper Int (IntT (Neg n)) = Int
-> type instance Upper (IntT (Pos n)) Int = IntT (Pos n)
-> type instance Upper (IntT (Neg n)) Int = Int
-> type instance Upper Int Int = Int
+> type instance Max (IntT a) (IntT b) = IntT (Max a b)
+> type instance Max (a, b) (c, d) = (Max a c, Max b d)
+> type instance Max (a, b, c) (d, e, f) = (Max a d, Max b e, Max c f)
+> type instance Max (a, b, c, d) (e, f, g, h) = (Max a e, Max b f, Max c g, Max d h)
 
-> type instance Upper (IntT a) (IntT b) = IntT (Upper a b)
-> type instance Upper (a, b) (c, d) = (Upper a c, Upper b d)
-> type instance Upper (a, b, c) (d, e, f) = (Upper a d, Upper b e, Upper c f)
-> type instance Upper (a, b, c, d) (e, f, g, h) = (Upper a e, Upper b f, Upper c g, Upper d h)
+> type family Min t t'
 
-> type family Lower t t'
+> type instance Min Zn Zn = Zn
+> type instance Min Zn (S n) = Zn
+> type instance Min (S n) Zn = Zn
+> type instance Min (S n) (S m) = S (Min n m)
 
- type instance Lower (Neg n) () = Neg n
- type instance Lower (S n) () = Zn
- type instance Lower Zn () = Zn
- type instance Lower Int () = Nat Zn
- type instance Lower (Nat n) () = Nat (Lower n ())
- type instance Lower (a, b) () = (Lower a (), Lower b ())
- type instance Lower (a, b, c) () = (Lower a (), Lower b (), Lower c ())
+> type instance Min (Pos n) (Pos m) = Pos (Min n m)
+> type instance Min (Pos n) (Neg m) = Neg m
+> type instance Min (Neg n) (Pos m) = Neg n
+> type instance Min (Neg n) (Neg m) = Neg (Max n m)
 
-> type instance Lower Zn Zn = Zn
-> type instance Lower Zn (S n) = Zn
-> type instance Lower (S n) Zn = Zn
-> type instance Lower (S n) (S m) = S (Lower n m)
+> type instance Min Int (IntT (Pos n)) = Int
+> type instance Min Int (IntT (Neg n)) = IntT (Neg n)
+> type instance Min (IntT (Pos n)) Int = Int
+> type instance Min (IntT (Neg n)) Int = IntT (Neg n)
+> type instance Min Int Int = Int
 
-> type instance Lower (Pos n) (Pos m) = Pos (Lower n m)
-> type instance Lower (Pos n) (Neg m) = Neg m
-> type instance Lower (Neg n) (Pos m) = Neg n
-> type instance Lower (Neg n) (Neg m) = Neg (Upper n m)
-
-> type instance Lower Int (IntT (Pos n)) = Int
-> type instance Lower Int (IntT (Neg n)) = IntT (Neg n)
-> type instance Lower (IntT (Pos n)) Int = Int
-> type instance Lower (IntT (Neg n)) Int = IntT (Neg n)
-> type instance Lower Int Int = Int
-
-> type instance Lower (IntT a) (IntT b) = IntT (Lower a b)
-> type instance Lower (a, b) (c, d) = (Lower a c, Lower b d)
-> type instance Lower (a, b, c) (d, e, f) = (Lower a d, Lower b e, Lower c f)
-> type instance Lower (a, b, c, d) (e, f, g, h) = (Lower a e, Lower b f, Lower c g, Lower d h)
+> type instance Min (IntT a) (IntT b) = IntT (Min a b)
+> type instance Min (a, b) (c, d) = (Min a c, Min b d)
+> type instance Min (a, b, c) (d, e, f) = (Min a d, Min b e, Min c f)
+> type instance Min (a, b, c, d) (e, f, g, h) = (Min a e, Min b f, Min c g, Min d h)
 
 > -- Enforces safe indexing
 
@@ -362,8 +346,6 @@
 
 > class BuildBoundary d ix dyn g where
 >    buildBoundary :: Dimensionality d -> BoundaryFun ix a dyn -> (Index d, Index d) -> g -> [(Index d, a)]
-
-     buildBoundary :: Dimensionality d -> ((t, g) -> a) -> (Index d, Index d) -> g -> [(Index d, a)]
 
 > instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) (Dynamic g) g where
 >     buildBoundary d (Dynamic f) (x0, xn) grid =
