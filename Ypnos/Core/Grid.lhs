@@ -131,13 +131,13 @@
 
 > -- Grid data type
 
-> data Grid d b a where
+> data Grid d ixs b a where
 >     Grid :: (UArray (Index d) a) -> Dimensionality d -> Index d -> (Index d, Index d) ->
 >              BoundaryList ixs dyn lower upper d a -> 
->              Grid d (SafeRelativeIndices ixs, dyn) a
+>              Grid d (SafeRelativeIndices ixs) dyn a
 
 > instance (Ix (Index d), IArray UArray a, 
->           Show (Index d), Show a) => Show (Grid d b a) where
+>           Show (Index d), Show a) => Show (Grid d ixs b a) where
 >     show (Grid arr d c (b1, b2) _) = (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
 
 > -- Safe relative indexes
@@ -155,16 +155,16 @@
 > -- Boundaries functions and list tpes
 
 > data Static 
-> data Dynamic g
+> data Dynamic 
 
-> data BoundaryFun ix a t where
->     Static :: (ix -> a) -> BoundaryFun ix a Static
->     Dynamic :: ((ix, g) -> a) -> BoundaryFun ix a (Dynamic g)
+> data BoundaryFun d ix a dyn where
+>     Static :: (ix -> a) -> BoundaryFun d ix a Static
+>     Dynamic :: ((ix, (Grid d Nil Static a)) -> a) -> BoundaryFun d ix a Dynamic
 
 > data BoundaryList t dyn lower upper d a where
->     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
->     ConsB :: BuildBoundary d ix dyn (Grid d (Nil, Static) a) => 
->               BoundaryFun ix a dyn
+>     NilB ::  BoundaryList Nil Static (Origin d) (Origin d) d a
+>     ConsB :: (BuildBoundary d ix dyn) => 
+>               BoundaryFun d ix a dyn
 >               -> BoundaryList t dyn' lower upper d a 
 >               -> BoundaryList (Cons ix t) (Dynamism dyn dyn') (Min ix lower) (Max ix upper) d a
 
@@ -179,9 +179,9 @@
 
 > type family Dynamism t t'
 > type instance Dynamism Static Static = Static
-> type instance Dynamism Static (Dynamic g) = Dynamic g
-> type instance Dynamism (Dynamic g) Static = Dynamic g
-> type instance Dynamism (Dynamic g) (Dynamic g) = Dynamic g
+> type instance Dynamism Static Dynamic = Dynamic
+> type instance Dynamism Dynamic Static = Dynamic
+> type instance Dynamism Dynamic Dynamic = Dynamic
      
 > type family Max t t'
 
@@ -231,28 +231,25 @@
 
 > -- Enforces safe indexing
 
-> class InBoundary n b
-> instance InBoundary n (Cons n y)
-> instance InBoundary n y => InBoundary n (Cons n' y)
+> class Safe n b
+> instance Safe n (Cons n y)
+> instance Safe n y => Safe n (Cons n' y)
 
 > -- A zero relative index is always within the boundary
-> instance InBoundary (IntT (Pos Zn)) Nil
-> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance InBoundary (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance Safe (IntT (Pos Zn)) Nil
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
 
 > -- Computes the values of a boundary region, given a boundary list
 
 > boundMap :: (IndexOps (Index d)) => Dimensionality d ->
->             BoundaryList ixs dyn lower upper d a -> Grid d (Nil, Static) a ->
+>             BoundaryList ixs dyn lower upper d a -> Grid d Nil Static a ->
 >             Index d -> Index d -> [(Index d, a)]
 > boundMap d NilB _ _ _ = []
 > boundMap d (ConsB f fs) g0 origin extent = (buildBoundary d f (origin, dec extent) g0) ++
 >                                            boundMap d fs g0 origin extent
-
-
-
 
 > -- Reify nat types as nat data and int data
 
@@ -264,9 +261,6 @@
 > class ReifiableIx t t' | t -> t' where
 >     typeToIntIx :: t -> t'
 >     typeToSymIx :: t -> t
-
- instance ReifiableIx (Nat Int) Int where
-     typeToIntIx = undefined
 
 > instance ReifiableIx (Nat Zn) Int where
 >     typeToIntIx _ = 0
@@ -344,10 +338,11 @@
 
 > -- Boundary builders
 
-> class BuildBoundary d ix dyn g where
->    buildBoundary :: Dimensionality d -> BoundaryFun ix a dyn -> (Index d, Index d) -> g -> [(Index d, a)]
+> class BuildBoundary d ix dyn where
+>    buildBoundary :: Dimensionality d -> BoundaryFun d ix a dyn -> (Index d, Index d) ->
+>                     (Grid d Nil Static a) -> [(Index d, a)]
 
-> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) (Dynamic g) g where
+> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Dynamic where
 >     buildBoundary d (Dynamic f) (x0, xn) grid =
 >         let
 >             x = typeToIntIx (undefined::(IntT n))
@@ -356,7 +351,7 @@
 >         in
 >             [(x' , f (typeToSymIx (undefined::(IntT n)), grid))]
 
-> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Static g where
+> instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Static where
 >     buildBoundary d (Static f) (x0, xn) grid =
 >         let
 >             x = typeToIntIx (undefined::(IntT n))
@@ -366,7 +361,7 @@
 >             [(x' , f (typeToSymIx (undefined::(IntT n))))]
      
 > instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) (Dynamic g) g  where
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Dynamic where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid = 
 >         let 
 >             x = typeToIntIx (undefined::(IntT n))
@@ -380,7 +375,7 @@
 
 
 > instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Static g where
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Static where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid = 
 >         let 
 >             x = typeToIntIx (undefined::(IntT n))
@@ -393,7 +388,7 @@
 >             [((x, y), f (typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))))]
 
 > instance (ReifiableIx (IntT n) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) (Dynamic g) g where
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) Dynamic where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid =
 >         let
 >             x = typeToIntIx (undefined::(IntT n))
@@ -404,7 +399,7 @@
 >                 f ((typeToSymIx (undefined::(IntT n)), y), grid))) (range (y0, yn))
 
 > instance (ReifiableIx (IntT n) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) Static g where
+>          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) Static where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid =
 >         let
 >             x = typeToIntIx (undefined::(IntT n))
@@ -415,7 +410,7 @@
 >                 f (typeToSymIx (undefined::(IntT n)), y))) (range (y0, yn))
 
 > instance (ReifiableIx (IntT m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) (Dynamic g) g where
+>          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) Dynamic where
 >     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid =
 >         let
 >             y = typeToIntIx (undefined::(IntT m))
@@ -426,7 +421,7 @@
 >                  f ((x, typeToSymIx (undefined::(IntT m))), grid))) (range (x0, xn))
 
 > instance (ReifiableIx (IntT m) Int) =>
->          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) Static g where
+>          BuildBoundary ((Dim d) :* (Dim d')) (Int, IntT m) Static where
 >     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid =
 >         let
 >             y = typeToIntIx (undefined::(IntT m))

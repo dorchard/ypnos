@@ -27,30 +27,36 @@
 
 The following is desugared from !!! inside a boundary macro
 
-> ypnosReservedBoundaryIndex :: (IArray UArray a, Dimension d) => Grid d (Nil, Static) a -> Index d -> a
+> ypnosReservedBoundaryIndex :: (IArray UArray a, Dimension d) => Grid d Nil Static a -> Index d -> a
 > ypnosReservedBoundaryIndex (Grid arr _ _ _ _) i = arr!i
 
 Hidden by grid patterns
 
 > {-# INLINE index1D #-}
-> index1D :: (InBoundary (IntT n) b, IArray UArray a) => IntT n -> Grid (Dim d) (b, dyn) a -> a
+> index1D :: (Safe (IntT n) ixs, IArray UArray a) => IntT n -> Grid (Dim d) ixs dyn a -> a
 > index1D n (Grid arr _ c _ _) = arr!(c + (intTtoInt n))
 
 > {-# INLINE index2D #-}
-> index2D :: (InBoundary (IntT n, IntT n') b, IArray UArray a) => (IntT n, IntT n') -> Grid (Dim d :* Dim d') (b, dyn) a -> a
+> index2D :: (Safe (IntT n, IntT n') ixs, IArray UArray a) => (IntT n, IntT n') -> Grid (Dim d :* Dim d') ixs dyn a -> a
 > index2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + intTtoInt n, y + intTtoInt n'))
 
 > {-# INLINE index3D #-}
-> index3D :: (InBoundary (IntT n, IntT n', IntT n'') b, IArray UArray a) => (IntT n, IntT n', IntT n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) (b, dyn) a -> a
+> index3D :: (Safe (IntT n, IntT n', IntT n'') ixs, IArray UArray a) => (IntT n, IntT n', IntT n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) ixs dyn a -> a
 > index3D (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + intTtoInt n, y + intTtoInt n', z + intTtoInt n'')
 
 > {-# INLINE indexC #-}
-> indexC :: (Dimension d, IArray UArray a) => Grid d b a -> a
+> indexC :: (Dimension d, IArray UArray a) => Grid d ixs dyn a -> a
 > indexC (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
+
+> (!!!) :: (IArray UArray a, Ix (Index d)) => Grid d ixs dyn a -> Index d -> a
+> (Grid arr _ _ _ _) !!! i = arr!i
+
+> ix :: (IArray UArray a, Ix (Index d)) => Grid d ixs dyn a -> Index d -> a
+> ix = (!!!)
 
 > -- Deconstructor
 
-> gridData :: (IArray UArray a, Dimension d, Ord (Index d)) => Grid d b a -> [a]
+> gridData :: (IArray UArray a, Dimension d, Ord (Index d)) => Grid d ixs dyn a -> [a]
 > gridData (Grid arr _ _ (origin, extent) _) = 
 >             let invert' = \(i, a) -> (invert i, a)
 >                 xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))  
@@ -60,11 +66,11 @@ Hidden by grid patterns
 
 > -- Constructors
 
-> listGrid :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [a] -> Grid d (Nil, Static) a
+> listGrid :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [a] -> Grid d Nil Static a
 > listGrid d origin extent xs = Grid arr d origin (origin, (dec extent)) NilB
 >                                  where arr = listArray (origin, (dec extent)) xs
 
-> grid :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [(Index d, a)] -> Grid d (Nil, Static) a
+> grid :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [(Index d, a)] -> Grid d Nil Static a
 > grid d origin extent xs = Grid arr d origin (origin, (dec extent)) NilB
 >                              where arr = array (origin, (dec extent)) xs
 
@@ -73,7 +79,7 @@ Hidden by grid patterns
 >                  ReifiableIx lower (Index d)) =>
 >                 Dimensionality d -> Index d -> Index d -> [(Index d, a)] ->
 >                 BoundaryList ixs dyn lower upper d a ->
->                 Grid d (SafeRelativeIndices ixs, dyn) a
+>                 Grid d (SafeRelativeIndices ixs) dyn a
 
 > gridWithBoundaries d origin extent xs boundaries =
 >              Grid arr d origin (origin, (dec extent)) boundaries
@@ -89,7 +95,7 @@ Hidden by grid patterns
 >                  ReifiableIx lower (Index d)) =>
 >                  Dimensionality d -> Index d -> Index d -> [a] ->
 >                  BoundaryList ixs dyn lower upper d a ->
->                  Grid d (SafeRelativeIndices ixs, dyn) a
+>                  Grid d (SafeRelativeIndices ixs) dyn a
 > listGridWithBoundaries d origin extent xs boundaries =
 >              Grid arr d origin (origin, (dec extent)) boundaries
 >              where 
@@ -103,7 +109,7 @@ Hidden by grid patterns
 
 > -- Run stencil computations
 
-> run :: (IArray UArray y, Dimension d) => (Grid d b x -> y) -> Grid d b x -> Grid d (Nil, Static) y
+> run :: (IArray UArray y, Dimension d) => (Grid d ixs dyn x -> y) -> Grid d ixs dyn x -> Grid d Nil Static y
 > run f (Grid arr d c (b1, b2) boundaries) =
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = array (b1, b2) dats'
@@ -111,9 +117,9 @@ Hidden by grid patterns
 
 > class RunGridA dyn where
 >     runA :: (IArray UArray a, Dimension d) =>
->                 (Grid d (b, dyn) a -> a) -> Grid d (b, dyn) a -> Grid d (b, dyn) a
+>                 (Grid d ixs dyn a -> a) -> Grid d ixs dyn a -> Grid d ixs dyn a
 
-> instance RunGridA (Dynamic (Grid d (Nil, Static) a)) where
+> instance RunGridA Dynamic where
 >     runA f (Grid arr d c (b1, b2) boundaries) = 
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = accum (curry snd) arr dats'

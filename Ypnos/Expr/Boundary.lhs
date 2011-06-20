@@ -106,9 +106,11 @@
 >                 in case parseToTH exp of
 >                       Left x -> error x
 >                       Right expr -> [fn]
->                          where 
->                            typ' = [t| BoundaryFun $(typ) $(conT $ mkName elementType) Static |]
->                            fn = sigE (appE (conE $ mkName "Static") (lamE [pat] (return $ expr))) typ'
+>                          where
+>                            (tvs, pred, dimTyp) = descriptorToDimensionality i
+>                            typ' = [t| BoundaryFun $(dimTyp) $(typ) $(conT $ mkName elementType) Static |]
+>                            typ'' = forallT tvs (return pred) typ'
+>                            fn = sigE (appE (conE $ mkName "Static") (lamE [pat] (return $ expr))) typ''
 > interpretCase elementType (Parameterised i var exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i
 >                 in case parseToTH exp of
@@ -117,8 +119,8 @@
 >                        where
 >                          elemTypeConstr = conT $ mkName elementType
 >                          (tvs, pred, dimTyp) = descriptorToDimensionality i
->                          typ' = [t| BoundaryFun $(typ) $(elemTypeConstr) 
->                                     (Dynamic (Grid $(dimTyp) (Nil, Static) $(elemTypeConstr))) |]
+>                          typ' = [t| BoundaryFun $(dimTyp) $(typ) $(elemTypeConstr) 
+>                                     Dynamic |]
 >                          typ'' = forallT tvs (return pred) typ'
 >                          fn = sigE (appE (conE $ mkName "Dynamic") (lamE [tupP [pat, varP $ mkName var]]
 >                                                                        (return expr))) typ''
