@@ -1,6 +1,6 @@
-> module Ypnos (grid, listGrid, gridWithBoundaries, listGridWithBoundaries,
->               indexC, index1D, index2D, index3D,
->               fun, 
+> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, 
+>               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
+>               fun, boundary,
 >               run, runA
 >               ) where
 
@@ -11,6 +11,7 @@
 
 > import Ypnos.Expr.Expr
 > import Ypnos.Expr.Fun
+> import Ypnos.Expr.Boundary
 
 > import Ypnos.Core.Grid
 > import Ypnos.Core.Combinators
