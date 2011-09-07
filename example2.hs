@@ -16,7 +16,7 @@ boundary2D = [boundary| Double from (-1, -1) to (+1, +1) -> 0.0 |]
 
 
 gridDat = [1.0,4.0,7.0,2.0,5.0,8.0,3.0,6.0,9.0]::[Double]
-grid1 = listGridWithBoundaries (Dim X :* Dim Y) (0, 0) (3, 3) gridDat boundary2D
+grid1 = listGrid (Dim X :* Dim Y) (0, 0) (3, 3) gridDat boundary2D
 
 grid1' = run ave2D grid1
 grid1'' = runA ave2D grid1
@@ -26,3 +26,16 @@ grid1'' = runA ave2D grid1
 -- elems = [(Ix[0,0],1.3333333333333333),(Ix[0,1],2.3333333333333335),(Ix[0,2],1.7777777777777777),
 --          (Ix[1,0],3.0),(Ix[1,1],5.0),(Ix[1,2],3.6666666666666665),
 --          (Ix[2,0],2.6666666666666665), (Ix[2,1],4.333333333333333),(Ix[2,2],3.111111111111111)]
+
+foobar = [fun| X*Y:| a  _ _  _ |
+                   | _  _ @c _ |
+                   | _  _ _  _ | -> a + c |]
+
+bounda = [boundary| Double (-1, -1) -> 0.0
+                           (-1, *j) -> 0.0
+                           (*i, -1) -> 0.0 
+                           (-2, *j) -> 0.0 
+                           (-2, -1) -> 0.0 |]
+
+grida = listGrid (Dim X :* Dim Y) (0, 0) (3, 3) gridDat bounda
+grida' = run foobar grida
