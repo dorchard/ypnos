@@ -10,7 +10,10 @@ import System.Environment
 import PPM.Image
 
 -- Build
---  ghc --make -O2 LaplaceExample.hs -o LaplaceExample 
+--  ghc --make -O2 LaplaceExample.hs -o LaplaceExample -fcontext-stack=1024
+
+-- The -fcontext-stack parameter is very important
+
 -- Run (outputs boat.512.ypnos.ppm)
 -- ./LaplaceExample boat.512 1 
 
