@@ -9,6 +9,8 @@
 > {-# LANGUAGE OverlappingInstances #-}
 > {-# LANGUAGE FunctionalDependencies #-}
 
+> {-# LANGUAGE UndecidableInstances #-}
+
 > module Ypnos.Core.Grid where
 
 > import Data.Array.IArray
@@ -36,9 +38,13 @@
 >     Neg :: Nat (S n) -> IntT (Neg (S n))
 >     Pos :: Nat n -> IntT (Pos n)
 
+ {-# INLINE natToInt #-}
+
 > natToInt :: Nat n -> Int
 > natToInt Zn = 0
 > natToInt (S n) = 1 + natToInt n
+
+{-# INLINE intTtoInt #-}
 
 > intTtoInt :: IntT n -> Int
 > intTtoInt (Pos n) = natToInt n
@@ -58,35 +64,10 @@
 > instance Show (Nat n) => Show (IntT (Pos n)) where
 >     show (Pos n) = "+" ++ (show n)
 
-
-> {-
-> type Zero = Zn
-> type One = S Zn
-> type Two = S (S Zn)
-> type Three = S (S (S Zn))
-> type Four = S (S (S (S Zn)))
-> type Five = S (S (S (S (S Zn))))
-> type Six = S (S (S (S (S (S Zn)))))
-> type Seven = S (S (S (S (S (S (S Zn))))))
-
-> data family NatRepr t
-> data instance NatRepr Zn = Zero
-> data instance NatRepr (S Zn) = One
-> data instance NatRepr (S (S Zn)) = Two
-> data instance NatRepr (S (S (S Zn))) = Three
-> data instance NatRepr (S (S (S (S Zn)))) = Four
-> data instance NatRepr (S (S (S (S (S Zn))))) = Five
-> data instance NatRepr (S (S (S (S (S (S Zn)))))) = Six
-> data instance NatRepr (S (S (S (S (S (S (S Zn))))))) = Seven
-> -}
-
 > -- Type-level list (hetro-geneous list)
 
 > data Nil
 > data Cons a b
-
-> type (:::) = Cons
-> 
 
 > {- 
 > data List l where
@@ -112,12 +93,15 @@
 > instance DimIdentifier d => Dimension (Dim d)
 > instance (Dimension (Dim d), Dimension (Dim d')) => (Dimension (Dim d :* Dim d'))
 
+instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimension (Dim d :* (Dim d' :* Dim d'')))
+
+
 > data Dim d 
 > data (:*) d d'
 
 > data Dimensionality d where
->     Dim :: (Dimension (Dim d), DimIdentifier d) => d -> Dimensionality (Dim d)
->     (:*) :: (Dimension (Dim d :* d')) => Dimensionality (Dim d) -> Dimensionality d' -> Dimensionality (Dim d :* d')
+>     Dim :: d -> Dimensionality (Dim d)
+>     (:*) :: Dimensionality (Dim d) -> Dimensionality d' -> Dimensionality (Dim d :* d')
 
 > -- Indices terms
 
@@ -131,26 +115,23 @@
 
 > -- Grid data type
 
-> data Grid d ixs b a where
->     Grid :: (UArray (Index d) a) -> Dimensionality d -> Index d -> (Index d, Index d) ->
->              BoundaryList ixs dyn lower upper d a -> 
->              Grid d (SafeRelativeIndices ixs) dyn a
+> data Grid d b dyn a where
+>    Grid :: (UArray (Index d) a) ->                      -- Array of values
+>            Dimensionality d ->                          -- Dimensionality term
+>            Index d ->                                   -- Cursor ("current index") 
+>            (Index d, Index d) ->                        -- Lower and upper bounds of extent
+>            BoundaryList ixs dyn lower upper d a ->      -- Boundary information
+>            Grid d ixs dyn a
 
 > instance (Ix (Index d), IArray UArray a, 
->           Show (Index d), Show a) => Show (Grid d ixs b a) where
+>           Show (Index d), Show a) => Show (Grid d b dyn a) where
 >     show (Grid arr d c (b1, b2) _) = (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
 
-> -- Safe relative indexes
-
-> type family InnerToZn t
-> type instance InnerToZn Int = IntT (Pos Zn)
-> type instance InnerToZn (IntT n) = IntT n
-> type instance InnerToZn (a, b) = (InnerToZn a, InnerToZn b)
-> type instance InnerToZn (a, b, c) = (InnerToZn a, InnerToZn b, InnerToZn c)
-
-> type family SafeRelativeIndices t
-> type instance SafeRelativeIndices Nil = Nil
-> type instance SafeRelativeIndices (Cons x xs) = Cons (InnerToZn x) (SafeRelativeIndices xs)
+> type family AbsToReln t
+> type instance AbsToReln Int = IntT (Pos Zn)
+> type instance AbsToReln (IntT n) = IntT n
+> type instance AbsToReln (a, b) = (AbsToReln a, AbsToReln b)
+> type instance AbsToReln (a, b, c) = (AbsToReln a, AbsToReln b, AbsToReln c)
 
 > -- Boundaries functions and list tpes
 
@@ -161,12 +142,12 @@
 >     Static :: (ix -> a) -> BoundaryFun d ix a Static
 >     Dynamic :: ((ix, (Grid d Nil Static a)) -> a) -> BoundaryFun d ix a Dynamic
 
-> data BoundaryList t dyn lower upper d a where
->     NilB ::  BoundaryList Nil Static (Origin d) (Origin d) d a
->     ConsB :: (BuildBoundary d ix dyn) => 
->               BoundaryFun d ix a dyn
->               -> BoundaryList t dyn' lower upper d a 
->               -> BoundaryList (Cons ix t) (Dynamism dyn dyn') (Min ix lower) (Max ix upper) d a
+> data BoundaryList b dyn lower upper d a where
+>     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
+>     ConsB :: BuildBoundary d ix dyn => 
+>              BoundaryFun d ix a dyn
+>               -> BoundaryList b dyn' lower upper d a 
+>               -> BoundaryList (Cons (AbsToReln ix) b) (Dynamism dyn dyn') (Lower (AbsToReln ix) lower) (Upper (AbsToReln ix) upper) d a
 
 > -- Type functions for combining inductively defined boundary info
 
@@ -195,16 +176,17 @@
 > type instance Max (Pos n) (Neg m) = Pos n
 > type instance Max (Neg n) (Neg m) = Neg (Min n m)
 
-> type instance Max Int (IntT (Pos n)) = IntT (Pos n)
-> type instance Max Int (IntT (Neg n)) = Int
-> type instance Max (IntT (Pos n)) Int = IntT (Pos n)
-> type instance Max (IntT (Neg n)) Int = Int
-> type instance Max Int Int = Int
+ type instance Max Int (IntT (Pos n)) = IntT (Pos n)
+ type instance Max Int (IntT (Neg n)) = Int
+ type instance Max (IntT (Pos n)) Int = IntT (Pos n)
+ type instance Max (IntT (Neg n)) Int = Int
+ type instance Max Int Int = Int
 
-> type instance Max (IntT a) (IntT b) = IntT (Max a b)
-> type instance Max (a, b) (c, d) = (Max a c, Max b d)
-> type instance Max (a, b, c) (d, e, f) = (Max a d, Max b e, Max c f)
-> type instance Max (a, b, c, d) (e, f, g, h) = (Max a e, Max b f, Max c g, Max d h)
+> type family Upper a b
+> type instance Upper (IntT a) (IntT b) = IntT (Max a b)
+> type instance Upper (a, b) (c, d) = (Upper a c, Upper b d)
+> type instance Upper (a, b, c) (d, e, f) = (Upper a d, Upper b e, Upper c f)
+> type instance Upper (a, b, c, d) (e, f, g, h) = (Upper a e, Upper b f, Upper c g, Upper d h)
 
 > type family Min t t'
 
@@ -218,29 +200,55 @@
 > type instance Min (Neg n) (Pos m) = Neg n
 > type instance Min (Neg n) (Neg m) = Neg (Max n m)
 
-> type instance Min Int (IntT (Pos n)) = Int
-> type instance Min Int (IntT (Neg n)) = IntT (Neg n)
-> type instance Min (IntT (Pos n)) Int = Int
-> type instance Min (IntT (Neg n)) Int = IntT (Neg n)
-> type instance Min Int Int = Int
+ type instance Min Int (IntT (Pos n)) = Int
+ type instance Min Int (IntT (Neg n)) = IntT (Neg n)
+ type instance Min (IntT (Pos n)) Int = Int
+ type instance Min (IntT (Neg n)) Int = IntT (Neg n)
+ type instance Min Int Int = Int
 
-> type instance Min (IntT a) (IntT b) = IntT (Min a b)
-> type instance Min (a, b) (c, d) = (Min a c, Min b d)
-> type instance Min (a, b, c) (d, e, f) = (Min a d, Min b e, Min c f)
-> type instance Min (a, b, c, d) (e, f, g, h) = (Min a e, Min b f, Min c g, Min d h)
+> type family Lower a b
+> type instance Lower (IntT a) (IntT b) = IntT (Min a b)
+> type instance Lower (a, b) (c, d) = (Lower a c, Lower b d)
+> type instance Lower (a, b, c) (d, e, f) = (Lower a d, Lower b e, Lower c f)
+> type instance Lower (a, b, c, d) (e, f, g, h) = (Lower a e, Lower b f, Lower c g, Lower d h)
 
 > -- Enforces safe indexing
 
-> class Safe n b
-> instance Safe n (Cons n y)
-> instance Safe n y => Safe n (Cons n' y)
+> type family Pred n
+> type instance Pred (Neg (S (S n))) = Neg (S n)    -- Pred -(n+1) = -n
+> type instance Pred (Neg (S Zn)) = Pos Zn          -- Pred -1 = 0
+> type instance Pred (Pos Zn) = Pos Zn              -- Pred 0 = 0
+> type instance Pred (Pos (S n)) = Pos n            -- Pred (n+1) = n
 
-> -- A zero relative index is always within the boundary
-> instance Safe (IntT (Pos Zn)) Nil
-> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
-> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) Nil
+> class Safe i b
+> 
+> -- 1D Safety
+
+> instance Safe (IntT (Pos Zn)) b 
+
+> instance (Safe (IntT (Pred n)) b,
+>           InBoundary (IntT n) b) => Safe (IntT n) b 
+
+> -- 2D Safety
+
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) b 
+
+> instance (Safe (IntT (Pred n), IntT n') b,
+>           Safe (IntT n, IntT (Pred n')) b,
+>           InBoundary (IntT n, IntT n') b) => Safe (IntT n, IntT n') b
+
+> -- 3D Safety
+
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) b
+
+> instance (Safe (IntT (Pred n), IntT n', IntT n'') b,
+>           Safe (IntT n, IntT (Pred n'), IntT n'') b,
+>           Safe (IntT n, IntT n', IntT (Pred n'')) b,
+>           InBoundary (IntT n, IntT n', IntT n'') b) => Safe (IntT n, IntT n', IntT n'') b  
+
+> class InBoundary i ixs
+> instance InBoundary i (Cons i ixs)                    -- Head matches
+> instance InBoundary i ixs => InBoundary i (Cons i' ixs)   -- Head does not match, thus recurse
 
 > -- Computes the values of a boundary region, given a boundary list
 
@@ -250,6 +258,7 @@
 > boundMap d NilB _ _ _ = []
 > boundMap d (ConsB f fs) g0 origin extent = (buildBoundary d f (origin, dec extent) g0) ++
 >                                            boundMap d fs g0 origin extent
+
 
 > -- Reify nat types as nat data and int data
 
@@ -261,6 +270,9 @@
 > class ReifiableIx t t' | t -> t' where
 >     typeToIntIx :: t -> t'
 >     typeToSymIx :: t -> t
+
+ instance ReifiableIx (Nat Int) Int where
+     typeToIntIx = undefined
 
 > instance ReifiableIx (Nat Zn) Int where
 >     typeToIntIx _ = 0
@@ -296,45 +308,32 @@
 > class IndexOps ix where
 >     dec :: ix -> ix                  -- decrement an index
 >     add :: ix -> ix -> ix            -- add two indices
->     invert :: ix -> ix               -- invert the index
->     sortR :: [(ix, a)] -> [(ix, a)]  -- radix sort the index (from left->right)
+>     invert :: ix -> ix               -- transpose the index
+
 > instance IndexOps Int where
 >     dec x = x - 1
 >     add x y = x + y
 >     invert = id
->     sortR = sortBy (\(i, a) -> \(j, b) -> compare i j)
+
 > instance IndexOps (Int, Int) where
 >     dec (x, y) = (x - 1, y - 1)
 >     add (x, a) (y, b) = (x+y, a+b)
 >     invert (x, y) = (y, x)
->     sortR = (sortBy (\((_, i), a) -> \((_, j), b) -> compare i j)) .
->             (sortBy (\((i, _), a) -> \((j, _), b) -> compare i j))
+
 > instance IndexOps (Int, Int, Int) where
 >     dec (x, y, z) = (x -1, y - 1, z - 1)
 >     add (x, a, u) (y, b, v) = (x+y, a+b, u+v)
 >     invert (x, y, z) = (z, y, x)
->     sortR = (sortBy (\((_, _, i), a) -> \((_, _, j), b) -> compare i j)) .
->             (sortBy (\((_, i, _), a) -> \((_, j, _), b) -> compare i j)) .
->             (sortBy (\((i, _, _), a) -> \((j, _, _), b) -> compare i j))
 
 > instance IndexOps (Int, Int, Int, Int) where
 >     dec (x, y, z, w) = (x - 1, y - 1, z - 1, w - 1)
 >     add (x, a, u, f) (y, b, v, g) = (x+y, a+b, u+v, f+g)
 >     invert (x, y, z, w) = (w, z, y, x)
->     sortR = (sortBy (\((_, _, _, i), a) -> \((_, _, _, j), b) -> compare i j)) .
->             (sortBy (\((_, _, i, _), a) -> \((_, _, j, _), b) -> compare i j)) .
->             (sortBy (\((_, i, _, _), a) -> \((_, j, _, _), b) -> compare i j)) .
->             (sortBy (\((i, _, _, _), a) -> \((j, _, _, _), b) -> compare i j))
 
 > instance IndexOps (Int, Int, Int, Int, Int) where
 >     dec (x, y, z, w, a) = (x - 1, y - 1, z - 1, w - 1, a - 1)
 >     add (x, a, u, f, i) (y, b, v, g, j) = (x+y, a+b, u+v, f+g, i+j)
 >     invert (x, y, z, w, a) = (a, w, z, y, x)
->     sortR = (sortBy (\((_, _, _, _, i), a) -> \((_, _, _, _, j), b) -> compare i j)) .
->             (sortBy (\((_, _, _, i, _), a) -> \((_, _, _, j, _), b) -> compare i j)) .
->             (sortBy (\((_, _, i, _, _), a) -> \((_, _, j, _, _), b) -> compare i j)) .
->             (sortBy (\((_, i, _, _, _), a) -> \((_, j, _, _, _), b) -> compare i j)) .
->             (sortBy (\((i, _, _, _, _), a) -> \((j, _, _, _, _), b) -> compare i j))
 
 > -- Boundary builders
 
@@ -430,3 +429,19 @@
 >         in
 >             map (\x -> ((x, y'),
 >                  f (x, typeToSymIx (undefined::(IntT m))))) (range (x0, xn))
+
+> class PointwiseOrd a where
+>     lte :: a -> a -> Bool
+>     gte :: a -> a -> Bool
+
+> instance PointwiseOrd Int where
+>     lte a x = a <= x
+>     gte a x = a >= x
+
+> instance PointwiseOrd (Int, Int) where
+>     lte (a, b) (x, y) = (a <= x) && (b <= y)
+>     gte (a, b) (x, y) = (a >= x) && (b >= y)
+
+> instance PointwiseOrd (Int, Int, Int) where
+>     lte (a, b, c) (x, y, z) = (a <= x) && (b <= y) && (c <= z)
+>     gte (a, b, c) (x, y, z) = (a >= x) && (b >= y) && (c >= z)

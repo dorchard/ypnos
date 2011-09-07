@@ -8,7 +8,7 @@
 > import Data.Generics
 > import Language.Haskell.TH 
 > import Language.Haskell.TH.Quote
-> import Language.Haskell.SyntaxTrees.ExtsToTH
+> import Language.Haskell.Meta.Parse
 > import Ypnos.Expr.Expr
 
 > import Ypnos.Core.Grid
@@ -36,10 +36,10 @@
 > interpret (BoundaryDef elementType cases) = interpretCases elementType cases
 
 > appendInterpretedCases [] ys = ys
-> appendInterpretedCases (x:xs) ys = [| ConsB $(x) $(appendInterpretedCases xs ys) |]
+> appendInterpretedCases (x:xs) ys = [| $(conE $ mkName "ConsB") $(x) $(appendInterpretedCases xs ys) |]
 
 > interpretCases :: String -> [BoundaryCase] -> Maybe (Q Exp)
-> interpretCases eT [] = Just $ [| NilB |]
+> interpretCases eT [] = Just $ [| $(conE $ mkName "NilB") |]
 > interpretCases eT (x:xs) = do let x' = interpretCase eT x
 >                               xs' <- interpretCases eT xs
 >                               return $ appendInterpretedCases x' xs'
@@ -53,13 +53,13 @@
 >                                   where
 >                                    go [x] n = ([PlainTV $ mkName $ "d" ++ show n],
 >                                                [ClassP (mkName "DimIdentifier") [(VarT $ mkName $ "d" ++ show n)]],
->                                                [t| Dim $(varT $ mkName $ "d" ++ show n) |])
+>                                                [t| $(conT $ mkName "Dim") $(varT $ mkName $ "d" ++ show n) |])
 >                                    go (x:xs) n = let (tvs, pred, typ) = go xs (n+1)
 >                                                      dimN = appT (conT $ mkName "Dim") (varT $ mkName $ "d" ++ show n)
 >                                                  in ([PlainTV $ mkName $ "d" ++ show n] ++ tvs,
 >                                                      [ClassP (mkName "DimIdentifier")
 >                                                         [(VarT $ mkName $ "d" ++ show n)]] ++ pred,
->                                                      [t| $(dimN) :* $(typ) |])
+>                                                      (appT (appT (conT $ mkName ":*") dimN) typ))
 >                                                          
 >                                                      
 > regionLTE (Negative x) (Positive y) = True
@@ -103,24 +103,24 @@
 >     
 > interpretCase elementType (Specific i exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i                                     
->                 in case parseToTH exp of
+>                 in case parseExp exp of
 >                       Left x -> error x
 >                       Right expr -> [fn]
->                          where
+>                          where 
 >                            (tvs, pred, dimTyp) = descriptorToDimensionality i
->                            typ' = [t| BoundaryFun $(dimTyp) $(typ) $(conT $ mkName elementType) Static |]
+>                            typ' = [t| $(conT $ mkName "BoundaryFun") $(dimTyp) $(typ) $(conT $ mkName elementType) $(conT $ mkName "Static") |]
 >                            typ'' = forallT tvs (return pred) typ'
 >                            fn = sigE (appE (conE $ mkName "Static") (lamE [pat] (return $ expr))) typ''
 > interpretCase elementType (Parameterised i var exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i
->                 in case parseToTH exp of
+>                 in case parseExp exp of
 >                      Left x -> error x
 >                      Right expr -> [fn]
 >                        where
 >                          elemTypeConstr = conT $ mkName elementType
 >                          (tvs, pred, dimTyp) = descriptorToDimensionality i
->                          typ' = [t| BoundaryFun $(dimTyp) $(typ) $(elemTypeConstr) 
->                                     Dynamic |]
+>                          typ' = [t| $(conT $ mkName "BoundaryFun") $(dimTyp) $(typ) $(elemTypeConstr) 
+>                                     $(conT $ mkName "Dynamic") |]
 >                          typ'' = forallT tvs (return pred) typ'
 >                          fn = sigE (appE (conE $ mkName "Dynamic") (lamE [tupP [pat, varP $ mkName var]]
 >                                                                        (return expr))) typ''
@@ -146,5 +146,7 @@
 > interpretSubRegion (Positive n) = intPat n
 
 > interpretRegionDescriptor :: RegionDescriptor -> (Q Pat, Q Type)
-> interpretRegionDescriptor regions = let (pats, types) = unzip $ map interpretSubRegion regions
+> interpretRegionDescriptor regions = let (pats, types) = unzip $ map interpretSubRegion (reverse regions)
 >                                     in (tupP pats, foldl appT (tupleT (length types)) types)
+
+> fcon c = conE $ mkName c

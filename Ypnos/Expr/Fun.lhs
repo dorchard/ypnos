@@ -9,7 +9,7 @@
 > import Data.Generics
 > import Language.Haskell.TH 
 > import Language.Haskell.TH.Quote
-> import Language.Haskell.SyntaxTrees.ExtsToTH
+> import Language.Haskell.Meta.Parse
 > import Ypnos.Expr.Expr
 
 > import Debug.Trace
@@ -43,7 +43,7 @@
 
 > interpret :: GridFun -> Maybe (Q Exp)
 > interpret (GridFun pattern body) = 
->     case parseToTH body of
+>     case parseExp body of
 >       Left x -> error x
 >       Right bodyExpr -> Just gridFun
 >           where
@@ -63,24 +63,31 @@
 >                   [| $(conE $ mkName "Pos") $(natToNatExp n) |]
 >                 
 
-> mkLetBind v e = valD (varP $ mkName v) (normalB e) []
+> mkLetBind1D v x = [valD (varP $ mkName v) (normalB [| $(fvar "index1D") $(intToIntExp $ x) x $(fvar "reserved_grid")|]) []]
+
+ [valD (varP $ mkName v) (normalB [| $(fvar "unsafeIndex1D") x $(fvar "reserved_grid") |]) [], valD (wildP) (normalB e) []]
+
+> mkLetBind2D v x y = [valD (varP $ mkName v) (normalB
+>                       [| $(fvar "index2D") 
+>                          ($(intToIntExp $ x), $(intToIntExp $ y)) (x, y)
+>                          $(fvar "reserved_grid")|]) []] 
+
+ [valD (varP $ mkName v) (normalB [| $(fvar "unsafeIndex2D") (x, y) $(fvar "reserved_grid") |]) [], valD (wildP) (normalB e) []]
 
 > toIndex1D s n [] = []
 > toIndex1D s n ((PatternBlank):xs) = toIndex1D s (n+1) xs
-> toIndex1D s n ((PatternVar v):xs) = (mkLetBind v [| $(fvar "index1D") $(intToIntExp (s*n)) $(fvar "reserved_grid") |])
->                                     :(toIndex1D s (n+1) xs)
+> toIndex1D s n ((PatternVar v):xs) = (mkLetBind1D v (s*n))
+>                                     ++ (toIndex1D s (n+1) xs)
 
 > toIndex2D _ _ [] = []
 > toIndex2D (s1, s2) (n1, n2) ((PatternBlank):xs) = toIndex2D (s1, s2) (n1, n2+1) xs
-> toIndex2D (s1, s2) (n1, n2) ((PatternVar v):xs) = (mkLetBind v [| $(fvar "index2D") 
->                                                                 ($(intToIntExp $ s1*n1), $(intToIntExp $ s2*n2))
->                                                                 $(fvar "reserved_grid") |])
->                                                   :(toIndex2D (s1, s2) (n1, n2+1) xs)
+> toIndex2D (s1, s2) (n1, n2) ((PatternVar v):xs) = (mkLetBind2D v (s1*n1) (s2*n2))
+>                                                   ++(toIndex2D (s1, s2) (n1, n2+1) xs)
 
 > toGrid1DLets l c r = 
 >    (toIndex1D (-1) 1 l) ++ (toIndex1D 1 1 r) ++
 >       (case c of
->          PatternVar x -> [mkLetBind x [|$(fvar "indexC") $(fvar "reserved_grid")|]]
+>          PatternVar x -> [valD (varP $ mkName x) (normalB [|$(fvar "indexC") $(fvar "reserved_grid")|]) []]
 >          _ -> [])
 
 > toGrid2DLets l c r = 
