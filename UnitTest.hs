@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 
 module Example1 where
@@ -20,11 +21,19 @@ grid1 xs = listGrid (Dim X) 0 3 xs datBound
 
 f = [fun| X:| a @b c | -> a+b+c |]
 
+--f' :: (InBoundary (IntT (Pos (S Zn))) b,
+--       InBoundary (IntT (Neg (S Zn))) b) => Grid (Dim X) b Static Int -> Int
+f' = [fun| X:| a @b c | -> a+b+c+(0::Int) |]
+
+
 prop_grid = forAll (vector 3) $ \xs ->
 		   let ys' = run f (grid1 xs) 
 		   in 
                        (gridData ys') !! 1 == sum xs
 
+--prop_grid' = forAll (vector 3) $ \xs ->
+--		   let ys' = run f' (grid1 xs) in -
+--                       (gridData ys') !! 1 == sum xs
 -- Lets
 letf = [fun| X:| @a | -> let x = a in x |]
 
@@ -38,12 +47,12 @@ constf = [fun| X:| @_ | -> 2 |]
 prop_const xs = let ys' = run constf (grid1 xs) in all (\ x -> x == 2) (gridData ys')
 
 -- Tuple
-tupf :: Grid (Dim X) b dyn Int -> (Int, Int, Int)
-tupf = [fun| X:| a @b c | -> (a, b, c) |]
+--tupf :: Grid (Dim X) b dyn Int -> (Int, Int, Int)
+--tupf = [fun| X:| a @b c | -> (a, b, c+0) |]
 
 overlap0 xs = all (\ ((_,a,_),(_,a',_)) -> a == a') (zip xs xs)
 
-prop_tup xs = let ys' = gridData (run tupf (grid1 xs)) in overlap0 ys'
+--prop_tup xs = let ys' = gridData (run tupf (grid1 xs)) in overlap0 ys'
 
 -- Prj
 -- Array indices
