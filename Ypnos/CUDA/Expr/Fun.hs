@@ -52,10 +52,13 @@ interpret (GridFun pattern body) =
             gpat = mkPattern pattern  
 
 mkPattern :: GridPattern -> PatQ
-mkPattern (GridPattern1D dim vars) =
-    tupP pats
-    where 
-    pats = mkVars vars
+mkPattern (GridPattern1D _ vars) =
+    pkgPattern vars
+mkPattern (GridPattern2D _ _ vars) = 
+    tupP (map pkgPattern vars)
+    
+pkgPattern :: [VarP] -> PatQ
+pkgPattern xs = tupP (mkVars xs)
 
 mkVars :: [VarP] -> [PatQ]
 mkVars vs = map getName vs

@@ -42,3 +42,8 @@ runAvg' xs = grid2List (run avg' grid)
 
 grid2List :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> [a]
 grid2List (Grid acc _ _ _ _) = elems acc
+
+avg2D :: Floating (Exp a) => Stencil3x3 a -> Exp a
+avg2D = [fun| X*Y:|a  b c|
+                  |d @e f|
+                  |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
