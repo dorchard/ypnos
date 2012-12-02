@@ -1,11 +1,22 @@
-{-# LANGUAGE FlexibleContexts, QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Average (runAvg) where 
 
 import Prelude hiding (zipWith)
+
 import Ypnos hiding (fun, run)
+import Ypnos.Core.Grid
 import Ypnos.CUDA.Expr.Fun 
+import Ypnos.CUDA.Expr.Combinators
+
 import Data.Array.Accelerate hiding (flatten)
-import Data.Array.Accelerate.Interpreter 
+import qualified Data.Array.Accelerate.Interpreter as Acc
+
+import Data.Array.IArray
+import Data.Array.Unboxed
 
 avg :: Floating (Exp a) => Stencil3x3 a -> Exp a
 avg ((a, b, c),
@@ -13,19 +24,21 @@ avg ((a, b, c),
      (g, h, i)) = (a + b + c + d + e + f + g + h + i)/9
 
 runAvg :: (IsFloating a, Elt a) => [a] -> Int -> Int -> [a]
-runAvg xs x y = toList $ run (stencil avg Clamp acc_xs)
+runAvg xs x y = toList $ Acc.run (stencil avg Clamp acc_xs)
     where acc_xs = use xs'
           xs' = fromList (Z :. x :. y) xs
           
 -- Why does this not work?
--- avg' = [fun| Z:|a @b c| -> a + b + c|]:: Floating (Exp a) => Stencil3 a -> 
--- Exp a
+-- avg' = ([fun| Z:|a @b c| -> a + b + c|]):: Floating (Exp a) => Stencil3 a -> 
+--Exp a
 
 avg' :: Floating (Exp a) => Stencil3 a -> Exp a
 avg' = [fun| Z:|a @b c| -> (a + b + c)/3|]
 
--- TODO: implement the Ypnos function for run
-runAvg' :: (IsFloating a, Elt a) => [a] -> Int -> [a]
-runAvg' xs x = toList $ run (stencil avg' Clamp acc_xs)
-    where acc_xs = use xs'
-          xs' = fromList (Z :. x) xs
+--TODO: implement the Ypnos function for run
+runAvg' :: forall a. (IsFloating a, Elt a, IArray UArray a) => [a] -> [a]
+runAvg' xs = grid2List (run avg' grid)
+    where grid = listGrid (Dim X) 0 (length xs) xs NilB :: Grid (Dim X) Nil Static a
+
+grid2List :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> [a]
+grid2List (Grid acc _ _ _ _) = elems acc
