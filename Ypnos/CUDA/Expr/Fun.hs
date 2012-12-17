@@ -52,10 +52,10 @@ interpret (GridFun pattern body) =
             gpat = mkPattern pattern  
 
 mkPattern :: GridPattern -> PatQ
-mkPattern (GridPattern1D _ vars) =
-    pkgPattern vars
-mkPattern (GridPattern2D _ _ vars) = 
-    tupP (map pkgPattern vars)
+mkPattern pat = 
+    case pat of
+        (GridPattern1D _ _) -> mkPattern1D pat
+        (GridPattern2D _ _ vars) -> tupP (map pkgPattern vars)
     
 pkgPattern :: [VarP] -> PatQ
 pkgPattern xs = tupP (mkVars xs)
@@ -68,8 +68,57 @@ getName v =
     case uncurse v of
       PatternVar x -> varP $ mkName x
       PatternBlank -> wildP
-
     
 uncurse :: VarP -> VarP'
 uncurse (Cursor v) = v
 uncurse (NonCursor v) = v
+
+mkPattern1D :: GridPattern -> PatQ
+mkPattern1D pat = tupP (mkPattern1D' (fromJust (getCursorLocation pat [0])) (getNonCursorLocations pat [0]) 0)
+
+mkPattern1D' :: Position -> [Position] -> Int -> [PatQ]
+mkPattern1D' p (n:ncs) x | l==x = (getName' c):(mkPattern1D' p (n:ncs) (x+1))
+                      | ln==x = (getName' nc):(mkPattern1D' p ncs (x+1))
+                      | x > 2*l = []
+                      | otherwise = wildP:(mkPattern1D' p ncs (x+1)) --TODO: avoid this repetition
+    where Position nc (ln:_) = n 
+          Position c (l:_) = p
+mkPattern1D' p _ x = [] --TODO: deal with case of cursor being last element
+
+getName' :: VarP' -> PatQ
+getName' (PatternVar x) = varP $ mkName x
+getName' PatternBlank = wildP
+
+data Position = Position VarP' [Int] deriving Show
+
+getCursorLocation :: GridPattern -> [Int] -> Maybe Position
+getCursorLocation (GridPattern1D x ((Cursor v):vs)) loc = Just (Position v loc)
+getCursorLocation (GridPattern1D x ((NonCursor _):vs)) (l:ls) = getCursorLocation (GridPattern1D x vs) ((l+1):ls)
+getCursorLocation (GridPattern1D x []) _ = Nothing
+getCursorLocation (GridPattern2D x y (v:vs)) (l:ls) = 
+                case getCursorLocation (GridPattern1D x v) (0:l:ls) of
+                    Just a -> Just a
+                    Nothing -> getCursorLocation (GridPattern2D x y vs) ((l+1):ls)
+getCursorLocation (GridPattern2D x y []) _ = Nothing
+
+getNonCursorLocations (GridPattern1D x curs) ls = 
+        case curs of
+            (v:vs) ->
+                let next = getNonCursorLocations (GridPattern1D x vs) ((l+1):locs)
+                    (l:locs) = ls
+                in case v of
+                    (Cursor _) -> next
+                    (NonCursor v) -> (Position v ls):next
+            [] -> []
+getNonCursorLocations (GridPattern2D x y curs) ls =
+        case curs of
+            (v:vs) ->
+                let current = getNonCursorLocations (GridPattern1D x v) (0:ls)
+                    (l:locs) = ls
+                    next = getNonCursorLocations (GridPattern2D x y vs) (l+1:locs)
+                in current ++ next
+            [] -> []
+
+getSize :: GridPattern -> [Int]
+getSize (GridPattern1D _ vs) = [length vs]
+getSize (GridPattern2D x _ (v:vs)) = (length (v:vs)):(getSize (GridPattern1D x v)) 
