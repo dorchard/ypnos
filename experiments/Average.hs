@@ -2,6 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Average (runAvg) where 
 
@@ -12,7 +13,7 @@ import Ypnos.Core.Grid
 import Ypnos.CUDA.Expr.Fun 
 import Ypnos.CUDA.Expr.Combinators
 
-import Data.Array.Accelerate hiding (flatten)
+import Data.Array.Accelerate hiding (flatten, fromIntegral, floor)
 import qualified Data.Array.Accelerate.Interpreter as Acc
 
 import Data.Array.IArray
@@ -47,3 +48,13 @@ avg2D :: Floating (Exp a) => Stencil3x3 a -> Exp a
 avg2D = [fun| X*Y:|a  b c|
                   |d @e f|
                   |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
+
+runAvg2D :: forall a. (IsFloating a, Elt a, IArray UArray a) => [a] -> [a]
+runAvg2D xs = grid2List (run avg2D grid)
+    where grid = listGrid (Dim X :* Dim Y) (0,0) (w,h) xs NilB :: Grid (Dim X :* Dim Y) Nil Static a
+          w = intSqrt len :: Int
+          h = intSqrt len :: Int
+          len = length xs :: Int
+
+intSqrt :: Int -> Int
+intSqrt = floor . sqrt . fromIntegral

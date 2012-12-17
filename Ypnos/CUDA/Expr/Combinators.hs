@@ -16,6 +16,7 @@ import Ypnos.Core.Grid
 type family IShape a
 
 type instance IShape (Dim x) = Z :. Int
+type instance IShape (Dim x :* Dim y) = Z :. Int :. Int
 
 run :: forall x y d sh sten b dyn. 
     (IArray UArray x, IArray UArray y, 
