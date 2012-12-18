@@ -85,13 +85,13 @@ class (Ix i, Index d ~ i) => GridIx d i where
 
 instance GridIx (Dim x) Int where
     getBounds (GridPattern1D' _ ls) = 
-        (0::Int, length ls)
+        (0::Int, length ls - 1)
     getCurIx (GridPattern1D' _ _) = 1
     safeConcat (GridPattern1D' _ ls) = ls
 
 instance GridIx (Dim x :* Dim y) (Int,Int) where
     getBounds (GridPattern2D' _ _ ls) = 
-        ((0::Int,0::Int), (length (head ls), length ls))
+        ((0::Int,0::Int), (length (head ls) -1, length ls -1))
     getCurIx (GridPattern2D' _ _ _) = (1,1)
     safeConcat (GridPattern2D' _ _ ls) = concat ls
     
