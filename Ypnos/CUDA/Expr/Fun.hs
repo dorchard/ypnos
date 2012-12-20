@@ -22,6 +22,8 @@ import Data.Array.IArray
 
 import Debug.Trace
 
+--The Parser Bit--
+
 fvar = varE . mkName
 fcon = conE . mkName
 
@@ -58,30 +60,32 @@ interpret (GridFun pattern body) =
            gridFun = lamE [gpat] (return bodyExpr)
            gpat = mkPattern pattern 
 
+-- We make a pattern in 3 steps:
+-- Ypnos Grid pattern -> Convert to intermediate representation ->
+-- Centre the grid in this representation -> Convert to pattern
+mkPattern' :: GridIx i => GridPattern' i -> PatQ
+mkPattern' = intToPatt . centreCursor . ypToInt
+
+-- We must convert to to GridPattern' where the dimensionality is in the type
+-- (above).
 mkPattern :: GridPattern -> PatQ
 mkPattern (GridPattern1D _ vs) = mkPattern' $ GridPattern1D' vs
 mkPattern (GridPattern2D _ _ vs) = mkPattern' $ GridPattern2D' vs
 
-mkPattern' :: GridIx i => GridPattern' i -> PatQ
-mkPattern' = intToPatt . centreCursor . ypToInt
 
+-- Intermediate representation
 data Intermediate i where 
     Inter :: Ix i => i -> Array i VarP -> Intermediate i
 
+-- Grid pattern with dimensionality in type.
 data family GridPattern' i
 data instance GridPattern' (Int) = 
     GridPattern1D' [VarP]
 data instance GridPattern' (Int, Int) = 
     GridPattern2D' [[VarP]]
 
-ypToInt :: GridIx i => GridPattern' i -> Intermediate i
-ypToInt pat = 
-        let range = getBounds pat 
-            ls = safeConcat pat 
-        in
-        Inter (getCurIx pat) 
-              (listArray range ls)
-
+-- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
+-- and 2D pattern simultaneously.
 class Ix i => GridIx i where
     getCurIx :: GridPattern' i -> i
     getBounds :: GridPattern' i -> (i,i)
@@ -108,9 +112,20 @@ instance GridIx (Int, Int) where
         where ((fa,fb),(la,lb)) = bounds arr
     ix = id
     
+-- Stage 1: converting to intermediate
+ypToInt :: GridIx i => GridPattern' i -> Intermediate i
+ypToInt pat = 
+        let range = getBounds pat 
+            ls = safeConcat pat 
+        in
+        Inter (getCurIx pat) 
+              (listArray range ls)
+
+-- Stage 2: centering the cursor
 centreCursor :: Intermediate i -> Intermediate i
 centreCursor = id
 
+-- Stage 3: converting to pattern
 intToPatt :: (GridIx i) => Intermediate i -> PatQ
 intToPatt (Inter _ arr) =
     tupP [
@@ -119,19 +134,6 @@ intToPatt (Inter _ arr) =
                 | i <- range a]
                     | j <- range b]
     where (a, b) = seperateBounds arr
-
-getName' :: VarP -> String
-getName' v = 
-    case uncurse v of
-        PatternVar x -> x
-        PatternBlank -> "_"
-
-
-pkgPattern2D :: [[VarP]] -> PatQ
-pkgPattern2D xs = tupP (map pkgPattern1D xs)
-
-pkgPattern1D :: [VarP] -> PatQ
-pkgPattern1D xs = tupP (map getName xs)
 
 getName :: VarP -> PatQ
 getName v = 
