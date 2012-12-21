@@ -60,57 +60,40 @@ interpret (GridFun pat body) =
            gridFun = lamE [gpat] (return bodyExpr)
            gpat = pattern pat 
 
--- We make a pattern in 3 steps:
--- Ypnos Grid pattern -> Convert to intermediate representation ->
--- Centre the grid in this representation -> Convert to pattern
-pattern' :: GridIx i => GridPattern' i -> PatQ
-pattern' = fromInter . centre . toInter
+-- Before converting into the patq representation we must first centre the
+-- pattern for accelerate.
+pattern' :: GridIx i => GridPatt i VarP-> PatQ
+pattern' = patQ . centre 
 
--- We must convert to to GridPattern' where the dimensionality is in the type
+centre :: GridIx i => GridPatt i VarP-> GridPatt i VarP
+centre = id
+
+patQ :: GridIx i => GridPatt i VarP -> PatQ
+patQ grid = gwrap tupP (gmap name grid)
+
+-- We must convert to to GridPatt where the dimensionality is in the type
 -- (above).
 pattern :: GridPattern -> PatQ
-pattern (GridPattern1D _ vs) = pattern' $ GridPattern1D' vs
-pattern (GridPattern2D _ _ vs) = pattern' $ GridPattern2D' vs
+pattern (GridPattern1D _ vs) = pattern' $ GridPatt1D vs
+pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D vs
 
-
--- Intermediate representation
-data Intermediate i where 
-    Inter :: Ix i => i -> Array i VarP -> Intermediate i
-
--- Grid pattern with dimensionality in type.
-data family GridPattern' i
-data instance GridPattern' (Int) = 
-    GridPattern1D' [VarP]
-data instance GridPattern' (Int, Int) = 
-    GridPattern2D' [[VarP]]
-
+-- Grid pattern with dimensionality in type and various helper functions.
 -- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
 -- and 2D pattern simultaneously.
 class (Ix i, Num i) => GridIx i where
-    getCurIx :: GridPattern' i -> i
-    getBounds :: GridPattern' i -> (i,i)
-    safeConcat :: GridPattern' i -> [VarP]
-    seperateBounds :: Array i e -> ((Int, Int),(Int,Int)) -- TODO: This is nasty
-    ix :: (Int, Int) -> i 
+    data GridPatt i :: * -> *
+    gwrap :: ([a] -> a) -> GridPatt i a -> a 
+    gmap :: (a -> b) -> GridPatt i a -> GridPatt i b
 
 instance GridIx Int where
-    getBounds (GridPattern1D' ls) = 
-        (0::Int, length ls - 1)
-    getCurIx (GridPattern1D' _) = 1 --TODO: Implement
-    safeConcat (GridPattern1D' ls) = ls
-    seperateBounds arr = ((fa, la),(fb,lb))
-        where (fa, la) = bounds arr
-              (fb, lb) = (0, 0)
-    ix (i, j) = i
+    data GridPatt Int a = GridPatt1D [a] deriving Show
+    gwrap f (GridPatt1D l) = f l
+    gmap f (GridPatt1D l) = GridPatt1D $ map f l
 
 instance GridIx (Int, Int) where
-    getBounds (GridPattern2D' ls) = 
-        ((0::Int,0::Int), (length (head ls) -1, length ls -1))
-    getCurIx (GridPattern2D' _) = (1,1) --TODO: Implement for real
-    safeConcat (GridPattern2D' ls) = concat ls
-    seperateBounds arr = ((fa, la),(fb,lb))
-        where ((fa,fb),(la,lb)) = bounds arr
-    ix = id
+    data GridPatt (Int, Int) a = GridPatt2D [[a]] deriving Show
+    gwrap f (GridPatt2D ll) = f (map f ll)
+    gmap f (GridPatt2D ll) = GridPatt2D $ map (map f) ll
 
 --Allow arithmetics on tuples
 tmap :: (a -> b) -> (a, a) -> (b, b)
@@ -127,51 +110,23 @@ instance Num (Int, Int) where
     fromInteger i = tmap fromInteger (i, i)
 
 --offset and range calculations--
--- | _ | @ | _ | _ |
+-- | _ | @ | _ | _ | : uncentred grid
 -- <--->   <------->
 --   a       b-a-1
+--
+--      coffset
+--       <--->
+--
+-- | _ | _ | @ | _ | _ | : centred grid
+-- 
+-- <------------------->
+--         crange
 longest :: GridIx i => i -> i -> i
 longest a b = max a (b-a-(fromInteger 1)) 
-offset :: GridIx i => i -> i -> i
-offset a b = (longest a b)- a
+coffset :: GridIx i => i -> i -> i
+coffset a b = (longest a b)- a
 crange :: GridIx i => i -> i -> (i,i)
 crange a b = (fromInteger 0, (fromInteger 2)*(longest a b) + (fromInteger 1))
-    
--- Stage 1: converting to intermediate
-toInter :: GridIx i => GridPattern' i -> Intermediate i
-toInter pat = 
-        let range = getBounds pat 
-            ls = safeConcat pat 
-        in
-        Inter (getCurIx pat) 
-              (listArray range ls)
-
--- Stage 2: centering the cursor
-centre :: GridIx i => Intermediate i -> Intermediate i
-centre inter = Inter i (ixmap nrange shift arr)
-    where shift i = i + off
-          off = offset i b
-          nrange = crange i b
-          (_, b) = bounds arr
-          Inter i arr = inter
-
-centre' :: GridIx i => i -> Array i e -> Array i e
-centre' i arr = (ixmap nrange shift arr)
-    where shift i = i + off
-          off = offset i b
-          nrange = crange i b
-          (_, b) = bounds arr
-
-
--- Stage 3: converting to pattern
-fromInter :: (GridIx i) => Intermediate i -> PatQ
-fromInter (Inter _ arr) =
-    tupP [
-        tupP [
-            name (arr ! (ix (i, j))) --TODO: this ix business is messy
-                | i <- range a]
-                    | j <- range b]
-    where (a, b) = seperateBounds arr
 
 name :: VarP -> PatQ
 name v = 
