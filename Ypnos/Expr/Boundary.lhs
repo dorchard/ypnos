@@ -18,9 +18,9 @@
 
 > boundary :: QuasiQuoter
 > boundary = QuasiQuoter { quoteExp = quoteExprExp,
->                     quotePat = undefined --,
->                     -- quoteType = undefined,
->                     -- quoteDec = undefined
+>                          quotePat = undefined,
+>                          quoteType = undefined,
+>                          quoteDec = undefined
 >                   }
 
 > quoteExprExp :: String -> Q Exp

@@ -16,5 +16,5 @@ grid1 = listGrid (Dim X) 0 3 dat datBound
 
 f = [fun| X:| a @b c | -> a+b+c |]
 
-grid1' = run f grid1
+grid1' = apply f grid1
 

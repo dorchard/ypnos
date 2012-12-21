@@ -115,16 +115,16 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 
 > -- Grid data type
 
-> data Grid d b dyn a where
+> data Grid d i a where
 >    Grid :: (UArray (Index d) a) ->                      -- Array of values
 >            Dimensionality d ->                          -- Dimensionality term
 >            Index d ->                                   -- Cursor ("current index") 
 >            (Index d, Index d) ->                        -- Lower and upper bounds of extent
 >            BoundaryList ixs dyn lower upper d a ->      -- Boundary information
->            Grid d ixs dyn a
+>            Grid d (ixs, dyn) a
 
 > instance (Ix (Index d), IArray UArray a, 
->           Show (Index d), Show a) => Show (Grid d b dyn a) where
+>           Show (Index d), Show a) => Show (Grid d (b, dyn) a) where
 >     show (Grid arr d c (b1, b2) _) = (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
 
 > type family AbsToReln t
@@ -137,10 +137,12 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 
 > data Static 
 > data Dynamic 
+> data Periodic
 
 > data BoundaryFun d ix a dyn where
 >     Static :: (ix -> a) -> BoundaryFun d ix a Static
->     Dynamic :: ((ix, (Grid d Nil Static a)) -> a) -> BoundaryFun d ix a Dynamic
+>     Dynamic :: ((ix, (Grid d (Nil, Static) a)) -> a) -> BoundaryFun d ix a Dynamic
+>     Periodic :: ix -> BoundaryFun d ix a Periodic
 
 > data BoundaryList b dyn lower upper d a where
 >     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
@@ -163,6 +165,13 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 > type instance Dynamism Static Dynamic = Dynamic
 > type instance Dynamism Dynamic Static = Dynamic
 > type instance Dynamism Dynamic Dynamic = Dynamic
+> type instance Dynamism Periodic Static = Static
+> type instance Dynamism Periodic Dynamic = Dynamic
+> type instance Dynamism Periodic Periodic = Static
+> type instance Dynamism Static Periodic = Static
+> type instance Dynamism Dynamic Periodic = Static
+
+
      
 > type family Max t t'
 
@@ -253,7 +262,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 > -- Computes the values of a boundary region, given a boundary list
 
 > boundMap :: (IndexOps (Index d)) => Dimensionality d ->
->             BoundaryList ixs dyn lower upper d a -> Grid d Nil Static a ->
+>             BoundaryList ixs dyn lower upper d a -> Grid d (Nil, Static) a ->
 >             Index d -> Index d -> [(Index d, a)]
 > boundMap d NilB _ _ _ = []
 > boundMap d (ConsB f fs) g0 origin extent = (buildBoundary d f (origin, dec extent) g0) ++
@@ -339,7 +348,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 
 > class BuildBoundary d ix dyn where
 >    buildBoundary :: Dimensionality d -> BoundaryFun d ix a dyn -> (Index d, Index d) ->
->                     (Grid d Nil Static a) -> [(Index d, a)]
+>                     (Grid d (Nil, Static) a) -> [(Index d, a)]
 
 > instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Dynamic where
 >     buildBoundary d (Dynamic f) (x0, xn) grid =
