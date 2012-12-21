@@ -34,7 +34,7 @@ runAvg xs x y = toList $ Acc.run (stencil avg Clamp acc_xs)
 --Exp a
 
 avg' :: Floating (Exp a) => Stencil3 a -> Exp a
-avg' = [fun| Z:|@a b c| -> (a + b + c)/3|]
+avg' = [fun| Z:|a @b c| -> (a + b + c)/3|]
 
 --TODO: implement the Ypnos function for run
 runAvg' :: forall a. (IsFloating a, Elt a, IArray UArray a) => [a] -> [a]

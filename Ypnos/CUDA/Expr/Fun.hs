@@ -22,6 +22,8 @@ import Data.Array.IArray
 
 import Debug.Trace
 
+import Data.List hiding (find)
+
 --The Parser Bit--
 
 fvar = varE . mkName
@@ -66,7 +68,17 @@ pattern' :: GridIx i => GridPatt i VarP-> PatQ
 pattern' = patQ . centre 
 
 centre :: GridIx i => GridPatt i VarP-> GridPatt i VarP
-centre = id
+centre grid = addAfter after bl $ addBefore before bl grid
+    where bl = NonCursor PatternBlank
+
+          before = coffset loc bounds
+          after = roffset loc bounds
+          
+          loc = find isCursor grid
+          bounds = size grid
+
+          isCursor (NonCursor _) = False
+          isCursor (Cursor _) = True
 
 patQ :: GridIx i => GridPatt i VarP -> PatQ
 patQ grid = gwrap tupP (gmap name grid)
@@ -74,8 +86,8 @@ patQ grid = gwrap tupP (gmap name grid)
 -- We must convert to to GridPatt where the dimensionality is in the type
 -- (above).
 pattern :: GridPattern -> PatQ
-pattern (GridPattern1D _ vs) = pattern' $ GridPatt1D vs
-pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D vs
+pattern (GridPattern1D _ vs) = pattern' $ GridPatt1D (length vs) vs
+pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D (length vs) (length (head vs)) vs
 
 -- Grid pattern with dimensionality in type and various helper functions.
 -- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
@@ -84,16 +96,28 @@ class (Ix i, Num i) => GridIx i where
     data GridPatt i :: * -> *
     gwrap :: ([a] -> a) -> GridPatt i a -> a 
     gmap :: (a -> b) -> GridPatt i a -> GridPatt i b
+    addBefore :: i -> a -> GridPatt i a -> GridPatt i a
+    addAfter :: i -> a -> GridPatt i a -> GridPatt i a
+    find :: (a -> Bool) -> GridPatt i a -> i
+    size :: GridPatt i a -> i
 
 instance GridIx Int where
-    data GridPatt Int a = GridPatt1D [a] deriving Show
-    gwrap f (GridPatt1D l) = f l
-    gmap f (GridPatt1D l) = GridPatt1D $ map f l
+    data GridPatt Int a = GridPatt1D Int [a] deriving Show
+    gwrap f (GridPatt1D _ l) = f l
+    gmap f (GridPatt1D x l) = GridPatt1D x $ map f l
+    addBefore i a (GridPatt1D x l) = GridPatt1D (x+i) $ (replicate i a) ++ l
+    addAfter i a (GridPatt1D x l) = GridPatt1D (x+i) $ l ++ (replicate i a)
+    find f (GridPatt1D _ xs) = fromJust (findIndex f xs)
+    size (GridPatt1D x _) = x
 
 instance GridIx (Int, Int) where
-    data GridPatt (Int, Int) a = GridPatt2D [[a]] deriving Show
-    gwrap f (GridPatt2D ll) = f (map f ll)
-    gmap f (GridPatt2D ll) = GridPatt2D $ map (map f) ll
+    data GridPatt (Int, Int) a = GridPatt2D Int Int [[a]] deriving Show
+    gwrap f (GridPatt2D _ _ ll) = f (map f ll)
+    gmap f (GridPatt2D x y ll) = GridPatt2D x y $ map (map f) ll
+    addBefore _ _ grid = grid
+    addAfter _ _ grid = grid
+    find f grid = (1,1)
+    size (GridPatt2D x y _) = (x, y)
 
 --Allow arithmetics on tuples
 tmap :: (a -> b) -> (a, a) -> (b, b)
@@ -114,19 +138,17 @@ instance Num (Int, Int) where
 -- <--->   <------->
 --   a       b-a-1
 --
---      coffset
---       <--->
+--      coffset   roffset
+--       <--->     <--->
 --
 -- | _ | _ | @ | _ | _ | : centred grid
--- 
--- <------------------->
---         crange
+--
 longest :: GridIx i => i -> i -> i
 longest a b = max a (b-a-(fromInteger 1)) 
 coffset :: GridIx i => i -> i -> i
 coffset a b = (longest a b)- a
-crange :: GridIx i => i -> i -> (i,i)
-crange a b = (fromInteger 0, (fromInteger 2)*(longest a b) + (fromInteger 1))
+roffset :: GridIx i => i -> i -> i
+roffset a b = (longest a b) + (fromInteger 1) - b + a
 
 name :: VarP -> PatQ
 name v = 
