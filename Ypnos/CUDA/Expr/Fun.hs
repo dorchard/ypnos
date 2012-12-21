@@ -52,25 +52,25 @@ quoteExprPat input = do loc <- location
                         dataToPatQ (const Nothing) expr
 
 interpret :: GridFun -> Maybe (Q Exp)
-interpret (GridFun pattern body) =
+interpret (GridFun pat body) =
    case parseExp body of
      Left x -> error x
      Right bodyExpr -> Just gridFun
          where
            gridFun = lamE [gpat] (return bodyExpr)
-           gpat = mkPattern pattern 
+           gpat = pattern pat 
 
 -- We make a pattern in 3 steps:
 -- Ypnos Grid pattern -> Convert to intermediate representation ->
 -- Centre the grid in this representation -> Convert to pattern
-mkPattern' :: GridIx i => GridPattern' i -> PatQ
-mkPattern' = intToPatt . centreCursor . ypToInt
+pattern' :: GridIx i => GridPattern' i -> PatQ
+pattern' = fromInter . centre . toInter
 
 -- We must convert to to GridPattern' where the dimensionality is in the type
 -- (above).
-mkPattern :: GridPattern -> PatQ
-mkPattern (GridPattern1D _ vs) = mkPattern' $ GridPattern1D' vs
-mkPattern (GridPattern2D _ _ vs) = mkPattern' $ GridPattern2D' vs
+pattern :: GridPattern -> PatQ
+pattern (GridPattern1D _ vs) = pattern' $ GridPattern1D' vs
+pattern (GridPattern2D _ _ vs) = pattern' $ GridPattern2D' vs
 
 
 -- Intermediate representation
@@ -86,11 +86,11 @@ data instance GridPattern' (Int, Int) =
 
 -- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
 -- and 2D pattern simultaneously.
-class Ix i => GridIx i where
+class (Ix i, Num i) => GridIx i where
     getCurIx :: GridPattern' i -> i
     getBounds :: GridPattern' i -> (i,i)
     safeConcat :: GridPattern' i -> [VarP]
-    seperateBounds :: Array i e -> ((Int, Int),(Int,Int))
+    seperateBounds :: Array i e -> ((Int, Int),(Int,Int)) -- TODO: This is nasty
     ix :: (Int, Int) -> i 
 
 instance GridIx Int where
@@ -111,10 +111,35 @@ instance GridIx (Int, Int) where
     seperateBounds arr = ((fa, la),(fb,lb))
         where ((fa,fb),(la,lb)) = bounds arr
     ix = id
+
+--Allow arithmetics on tuples
+tmap :: (a -> b) -> (a, a) -> (b, b)
+tmap f (a, b) = (f a, f b)
+tzip :: (a -> b -> c) -> (a, a) -> (b, b) -> (c, c)
+tzip f (a, b) (c, d) = (f a c, f b d)
+
+instance Num (Int, Int) where 
+    (+) = tzip (+)  
+    (*) = tzip (*)
+    negate = tmap negate
+    abs = tmap abs
+    signum = tmap signum
+    fromInteger i = tmap fromInteger (i, i)
+
+--offset and range calculations--
+-- | _ | @ | _ | _ |
+-- <--->   <------->
+--   a       b-a-1
+longest :: GridIx i => i -> i -> i
+longest a b = max a (b-a-(fromInteger 1)) 
+offset :: GridIx i => i -> i -> i
+offset a b = (longest a b)- a
+crange :: GridIx i => i -> i -> (i,i)
+crange a b = (fromInteger 0, (fromInteger 2)*(longest a b) + (fromInteger 1))
     
 -- Stage 1: converting to intermediate
-ypToInt :: GridIx i => GridPattern' i -> Intermediate i
-ypToInt pat = 
+toInter :: GridIx i => GridPattern' i -> Intermediate i
+toInter pat = 
         let range = getBounds pat 
             ls = safeConcat pat 
         in
@@ -122,21 +147,34 @@ ypToInt pat =
               (listArray range ls)
 
 -- Stage 2: centering the cursor
-centreCursor :: Intermediate i -> Intermediate i
-centreCursor = id
+centre :: GridIx i => Intermediate i -> Intermediate i
+centre inter = Inter i (ixmap nrange shift arr)
+    where shift i = i + off
+          off = offset i b
+          nrange = crange i b
+          (_, b) = bounds arr
+          Inter i arr = inter
+
+centre' :: GridIx i => i -> Array i e -> Array i e
+centre' i arr = (ixmap nrange shift arr)
+    where shift i = i + off
+          off = offset i b
+          nrange = crange i b
+          (_, b) = bounds arr
+
 
 -- Stage 3: converting to pattern
-intToPatt :: (GridIx i) => Intermediate i -> PatQ
-intToPatt (Inter _ arr) =
+fromInter :: (GridIx i) => Intermediate i -> PatQ
+fromInter (Inter _ arr) =
     tupP [
         tupP [
-            getName (arr ! (ix (i, j)))
+            name (arr ! (ix (i, j))) --TODO: this ix business is messy
                 | i <- range a]
                     | j <- range b]
     where (a, b) = seperateBounds arr
 
-getName :: VarP -> PatQ
-getName v = 
+name :: VarP -> PatQ
+name v = 
     case uncurse v of
       PatternVar x -> varP $ mkName x
       PatternBlank -> wildP
