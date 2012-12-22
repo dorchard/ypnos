@@ -46,8 +46,8 @@ grid2List (Grid acc _ _ _ _) = elems acc
 
 avg2D :: Floating (Exp a) => Stencil3x3 a -> Exp a
 avg2D = [fun| X*Y:|a  b c|
-                  |d @e f|
-                  |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
+                  |d  e f|
+                  |g @h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvg2D :: forall a. (IsFloating a, Elt a, IArray UArray a) => [a] -> [a]
 runAvg2D xs = grid2List (run avg2D grid)

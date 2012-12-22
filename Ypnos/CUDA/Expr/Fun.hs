@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Ypnos.CUDA.Expr.Fun where
 
@@ -101,6 +102,7 @@ class (Ix i, Num i) => GridIx i where
     find :: (a -> Bool) -> GridPatt i a -> i
     size :: GridPatt i a -> i
 
+-- 1D Case
 instance GridIx Int where
     data GridPatt Int a = GridPatt1D Int [a] deriving Show
     gwrap f (GridPatt1D _ l) = f l
@@ -110,13 +112,25 @@ instance GridIx Int where
     find f (GridPatt1D _ xs) = fromJust (findIndex f xs)
     size (GridPatt1D x _) = x
 
+-- Helper function for adding before or after in a 2D grid.
+addBeforeAfter ::  (forall b . [b] -> [b] -> [b]) 
+                -> (Int,Int) -> a -> GridPatt (Int,Int) a 
+                -> GridPatt (Int,Int) a
+addBeforeAfter f (i,j) a (GridPatt2D x y ll) = GridPatt2D (x+i) (y+j) (topbottom (map leftright ll))
+    where topbottom = f $ replicate (i) (replicate (y+j) a)
+          leftright = f $ replicate j a
+
+-- 2D Case
 instance GridIx (Int, Int) where
     data GridPatt (Int, Int) a = GridPatt2D Int Int [[a]] deriving Show
     gwrap f (GridPatt2D _ _ ll) = f (map f ll)
     gmap f (GridPatt2D x y ll) = GridPatt2D x y $ map (map f) ll
-    addBefore _ _ grid = grid
-    addAfter _ _ grid = grid
-    find f grid = (1,1)
+    addBefore = addBeforeAfter (\ x y -> x ++ y)
+    addAfter = addBeforeAfter (\ x y -> y ++ x)
+    find f (GridPatt2D _ _ xs) = (i, j)
+        where i = fromJust (findIndex isJust indexs)
+              j = fromJust (indexs !! i)
+              indexs = map (findIndex f) xs
     size (GridPatt2D x y _) = (x, y)
 
 --Allow arithmetics on tuples
