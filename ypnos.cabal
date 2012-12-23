@@ -21,6 +21,25 @@ library
                     Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
                     Ypnos.Core.Combinators 
   hs-source-dirs:   src
-  build-depends:    base ==4.6.*, accelerate ==0.13.*, 
-                    template-haskell ==2.8.*, syb ==0.3.*, array ==0.4.*, 
-                    directory ==1.2.*, haskell-src-meta, parsec
+  build-depends:    base ==4.6.*, 
+                    accelerate ==0.13.*, 
+                    template-haskell ==2.8.*, 
+                    syb ==0.3.*, 
+                    array ==0.4.*, 
+                    directory ==1.2.*, 
+                    haskell-src-meta, 
+                    parsec
+
+test-suite tests
+  type:	            exitcode-stdio-1.0
+  hs-source-dirs:   testsuite
+  main-is:          Test.hs
+  build-depends:    base, 
+                    ypnos,
+                    test-framework,
+                    test-framework-quickcheck2,
+                    test-framework-hunit,
+                    QuickCheck,
+                    HUnit,
+                    random,
+                    text
