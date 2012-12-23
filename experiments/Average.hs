@@ -8,10 +8,7 @@ module Average (runAvg) where
 
 import Prelude hiding (zipWith)
 
-import Ypnos hiding (fun, run)
-import Ypnos.Core.Grid
-import Ypnos.CUDA.Expr.Fun 
-import Ypnos.CUDA.Expr.Combinators
+import Ypnos.CUDA 
 
 import Data.Array.Accelerate hiding (flatten, fromIntegral, floor)
 import qualified Data.Array.Accelerate.Interpreter as Acc

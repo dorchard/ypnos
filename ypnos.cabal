@@ -16,6 +16,7 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  exposed-modules:     Ypnos, LapGaussianExample, LaplaceExample, UnitTest, Dot, Average, Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, Ypnos.Core.Combinators, Ypnos.Core.Grid, PPM.Image
+  exposed-modules:     Ypnos, Ypnos.CUDA
+  hs-source-dirs: src
   -- other-modules:       
   build-depends:       base ==4.6.*, accelerate ==0.13.*, template-haskell ==2.8.*, syb ==0.3.*, array ==0.4.*, directory ==1.2.*, haskell-src-meta, parsec
