@@ -25,11 +25,12 @@ import Debug.Trace
 
 import Data.List hiding (find)
 
---The Parser Bit--
+-- * The Parser Bit
 
 fvar = varE . mkName
 fcon = conE . mkName
 
+-- |The 'QuasiQuoter' that converts Ypnos syntax into Haskell code.
 fun :: QuasiQuoter
 fun = QuasiQuoter { quoteExp = quoteExprExp,
                    quotePat = quoteExprPat,
@@ -54,6 +55,7 @@ quoteExprPat input = do loc <- location
                         expr <- (parseExpr gridFun) pos input
                         dataToPatQ (const Nothing) expr
 
+-- |When we eventually run this is what gets evaluated.
 interpret :: GridFun -> Maybe (Q Exp)
 interpret (GridFun pat body) =
    case parseExp body of
@@ -63,11 +65,40 @@ interpret (GridFun pat body) =
            gridFun = lamE [gpat] (return bodyExpr)
            gpat = pattern pat 
 
--- Before converting into the patq representation we must first centre the
+-- * Pattern Conversion
+-- |Before converting into the patq representation we must first centre the
 -- pattern for accelerate.
 pattern' :: GridIx i => GridPatt i VarP-> PatQ
 pattern' = patQ . centre 
 
+-- |We must convert to to GridPatt where the dimensionality is in the type
+-- (above).
+pattern :: GridPattern -> PatQ
+pattern (GridPattern1D _ vs) = pattern' $ GridPatt1D (length vs) vs
+pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D (length vs) (length (head vs)) vs
+
+patQ :: GridIx i => GridPatt i VarP -> PatQ
+patQ grid = gwrap tupP (gmap name grid)
+
+-- * Centering the Pattern
+-- |Pads the pattern to put the cursor in the middle.
+-- An example uncentred grid:
+--
+-- @
+--          b
+--  *---------------*
+--  | _ | c | _ | _ |
+--  *---*   *-------*
+--    a       b-a-1
+-- @
+--
+-- After the centrering:
+--
+-- @    
+--         coffset roffset
+--          *---*   *---*
+--  | _ | _ | c | _ | _ | 
+-- @
 centre :: GridIx i => GridPatt i VarP-> GridPatt i VarP
 centre grid = addAfter after bl $ addBefore before bl grid
     where bl = NonCursor PatternBlank
@@ -78,16 +109,25 @@ centre grid = addAfter after bl $ addBefore before bl grid
           loc = cursorLoc grid
           bounds = size grid
 
-patQ :: GridIx i => GridPatt i VarP -> PatQ
-patQ grid = gwrap tupP (gmap name grid)
+-- ** Helpers for centering
+-- | Finds the maximum of a and b-a-1.
+longest :: GridIx i => i -> i -> i
+longest a b = elMax a (b-a-(fromInteger 1)) 
 
--- We must convert to to GridPatt where the dimensionality is in the type
--- (above).
-pattern :: GridPattern -> PatQ
-pattern (GridPattern1D _ vs) = pattern' $ GridPatt1D (length vs) vs
-pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D (length vs) (length (head vs)) vs
+-- | The cursor offset
+coffset :: GridIx i => i -> i -> i
+coffset a b = (longest a b)- a
 
--- Grid pattern with dimensionality in type and various helper functions.
+-- | The range offset ie. how much we must grow the grid.
+roffset :: GridIx i => i -> i -> i
+roffset a b = (longest a b) + (fromInteger 1) - b + a
+
+cursorLoc :: GridIx i => GridPatt i VarP -> i
+cursorLoc grid = find isCursor grid
+    where isCursor (NonCursor _) = False
+          isCursor (Cursor _) = True
+
+-- |Grid pattern with dimensionality in type and various helper functions.
 -- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
 -- and 2D pattern simultaneously.
 class (Ix i, Num i, ElMax i) => GridIx i where
@@ -99,9 +139,11 @@ class (Ix i, Num i, ElMax i) => GridIx i where
     find :: (a -> Bool) -> GridPatt i a -> i
     size :: GridPatt i a -> i
 
--- 1D Case
+-- |1D Case instanciated with 'GridPatt1D'
 instance GridIx Int where
-    data GridPatt Int a = GridPatt1D Int [a] deriving Show
+    data GridPatt Int a = 
+        -- | Creates a 1D grid.
+        GridPatt1D Int [a] deriving Show
     gwrap f (GridPatt1D _ l) = f l
     gmap f (GridPatt1D x l) = GridPatt1D x $ map f l
     addBefore i a (GridPatt1D x l) = GridPatt1D (x+i) $ (replicate i a) ++ l
@@ -109,7 +151,7 @@ instance GridIx Int where
     find f (GridPatt1D _ xs) = fromJust (findIndex f xs)
     size (GridPatt1D x _) = x
 
--- Helper function for adding before or after in a 2D grid.
+-- |Helper function for adding before or after in a 2D grid.
 addBeforeAfter ::  (forall b . [b] -> [b] -> [b]) 
                 -> (Int,Int) -> a -> GridPatt (Int,Int) a 
                 -> GridPatt (Int,Int) a
@@ -118,9 +160,11 @@ addBeforeAfter f (i,j) a (GridPatt2D x y ll) =
     where topbottom = f $ replicate (i) (replicate (y+j) a)
           leftright = f $ replicate j a
 
--- 2D Case
+-- |2D Case instanciated with 'GridPatt2D'
 instance GridIx (Int, Int) where
-    data GridPatt (Int, Int) a = GridPatt2D Int Int [[a]] deriving Show
+    data GridPatt (Int, Int) a = 
+        -- | Creates a 2D grid.
+        GridPatt2D Int Int [[a]] deriving Show
     gwrap f (GridPatt2D _ _ ll) = f (map f ll)
     gmap f (GridPatt2D x y ll) = GridPatt2D x y $ map (map f) ll
     addBefore = addBeforeAfter (\ x y -> x ++ y)
@@ -131,11 +175,7 @@ instance GridIx (Int, Int) where
               indexs = map (findIndex f) xs
     size (GridPatt2D x y _) = (x, y)
 
---Allow arithmetics on tuples
-tmap :: (a -> b) -> (a, a) -> (b, b)
-tmap f (a, b) = (f a, f b)
-tzip :: (a -> b -> c) -> (a, a) -> (b, b) -> (c, c)
-tzip f (a, b) (c, d) = (f a c, f b d)
+-- ** Helpers for Offset and Range calculations
 
 instance Num (Int, Int) where 
     (+) = tzip (+)  
@@ -145,7 +185,13 @@ instance Num (Int, Int) where
     signum = tmap signum
     fromInteger i = tmap fromInteger (i, i)
 
+tmap :: (a -> b) -> (a, a) -> (b, b)
+tmap f (a, b) = (f a, f b)
+tzip :: (a -> b -> c) -> (a, a) -> (b, b) -> (c, c)
+tzip f (a, b) (c, d) = (f a c, f b d)
+
 class ElMax i where
+    -- |Give an element wise maximum of the arguments.
     elMax :: i -> i -> i
 
 instance ElMax Int where
@@ -154,37 +200,16 @@ instance ElMax Int where
 instance ElMax (Int, Int) where
     elMax = tzip max
 
---offset and range calculations--
---         b
--- <--------------->
--- | _ | @ | _ | _ | : uncentred grid
--- <--->   <------->
---   a       b-a-1
---
---      coffset   roffset
---       <--->     <--->
---
--- | _ | _ | @ | _ | _ | : centred grid
---
-longest :: GridIx i => i -> i -> i
-longest a b = elMax a (b-a-(fromInteger 1)) 
-coffset :: GridIx i => i -> i -> i
-coffset a b = (longest a b)- a
-roffset :: GridIx i => i -> i -> i
-roffset a b = (longest a b) + (fromInteger 1) - b + a
 
-cursorLoc :: GridIx i => GridPatt i VarP -> i
-cursorLoc grid = find isCursor grid
-    where isCursor (NonCursor _) = False
-          isCursor (Cursor _) = True
-
-
+-- ** Converting the basic elements.
+-- Handles conversion between 'VarP' and 'PatQ'.
 name :: VarP -> PatQ
 name v = 
     case uncurse v of
       PatternVar x -> varP $ mkName x
       PatternBlank -> wildP
     
+-- | Strips 'Cursor' or 'NonCursor'
 uncurse :: VarP -> VarP'
 uncurse (Cursor v) = v
 uncurse (NonCursor v) = v
