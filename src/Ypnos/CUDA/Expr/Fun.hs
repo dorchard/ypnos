@@ -75,11 +75,8 @@ centre grid = addAfter after bl $ addBefore before bl grid
           before = coffset loc bounds
           after = roffset loc bounds
           
-          loc = find isCursor grid
+          loc = cursorLoc grid
           bounds = size grid
-
-          isCursor (NonCursor _) = False
-          isCursor (Cursor _) = True
 
 patQ :: GridIx i => GridPatt i VarP -> PatQ
 patQ grid = gwrap tupP (gmap name grid)
@@ -93,7 +90,7 @@ pattern (GridPattern2D _ _ vs) = pattern' $ GridPatt2D (length vs) (length (head
 -- Grid pattern with dimensionality in type and various helper functions.
 -- Various ad-hoc polymorphic helper functions. These help us deal with both 1D
 -- and 2D pattern simultaneously.
-class (Ix i, Num i) => GridIx i where
+class (Ix i, Num i, ElMax i) => GridIx i where
     data GridPatt i :: * -> *
     gwrap :: ([a] -> a) -> GridPatt i a -> a 
     gmap :: (a -> b) -> GridPatt i a -> GridPatt i b
@@ -116,7 +113,8 @@ instance GridIx Int where
 addBeforeAfter ::  (forall b . [b] -> [b] -> [b]) 
                 -> (Int,Int) -> a -> GridPatt (Int,Int) a 
                 -> GridPatt (Int,Int) a
-addBeforeAfter f (i,j) a (GridPatt2D x y ll) = GridPatt2D (x+i) (y+j) (topbottom (map leftright ll))
+addBeforeAfter f (i,j) a (GridPatt2D x y ll) = 
+    GridPatt2D (x+i) (y+j) (topbottom (map leftright ll))
     where topbottom = f $ replicate (i) (replicate (y+j) a)
           leftright = f $ replicate j a
 
@@ -147,7 +145,18 @@ instance Num (Int, Int) where
     signum = tmap signum
     fromInteger i = tmap fromInteger (i, i)
 
+class ElMax i where
+    elMax :: i -> i -> i
+
+instance ElMax Int where
+    elMax = max
+
+instance ElMax (Int, Int) where
+    elMax = tzip max
+
 --offset and range calculations--
+--         b
+-- <--------------->
 -- | _ | @ | _ | _ | : uncentred grid
 -- <--->   <------->
 --   a       b-a-1
@@ -158,11 +167,17 @@ instance Num (Int, Int) where
 -- | _ | _ | @ | _ | _ | : centred grid
 --
 longest :: GridIx i => i -> i -> i
-longest a b = max a (b-a-(fromInteger 1)) 
+longest a b = elMax a (b-a-(fromInteger 1)) 
 coffset :: GridIx i => i -> i -> i
 coffset a b = (longest a b)- a
 roffset :: GridIx i => i -> i -> i
 roffset a b = (longest a b) + (fromInteger 1) - b + a
+
+cursorLoc :: GridIx i => GridPatt i VarP -> i
+cursorLoc grid = find isCursor grid
+    where isCursor (NonCursor _) = False
+          isCursor (Cursor _) = True
+
 
 name :: VarP -> PatQ
 name v = 

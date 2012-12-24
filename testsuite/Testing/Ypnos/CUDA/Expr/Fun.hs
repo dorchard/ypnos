@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
+
 module Testing.Ypnos.CUDA.Expr.Fun where
 
 import Test.Framework (testGroup)
@@ -6,21 +9,70 @@ import Test.QuickCheck
 
 import Data.List
 
-fun_tests = testGroup "Ypnos.CUDA.Expr.Fun" [
-                testProperty "sort1" prop_sort1,
-                testProperty "sort2" prop_sort2,
-                testProperty "sort3" prop_sort3
-            ]
+import Ypnos.CUDA.Expr.Fun
+import Ypnos.Expr.Expr
 
-prop_sort1 xs = sort xs == sortBy compare xs
-  where types = (xs :: [Int])
+import Control.Monad
 
-prop_sort2 xs =
-        (not (null xs)) ==>
-        (head (sort xs) == minimum xs)
-  where types = (xs :: [Int])
+fun_tests = testGroup "Ypnos.CUDA.Expr.Fun"
+    [ testGroup "Test correctly generated GridPatt"
+      [ testProperty "Regularity" prop_regular
+      , testProperty "Positive size" prop_pos_dim
+      , testProperty "Has a cursor" prop_has_cursor ]
+    , testProperty "The roffset is always positive" prop_pos_roff
+    , testProperty "The coffset is always positive" prop_pos_coff
+    , testProperty "Centring preserves regularity" prop_centre_preserve ]
 
-prop_sort3 xs = (not (null xs)) ==>
-        last (sort xs) == maximum xs
-  where types = (xs :: [Int])
 
+elementAt :: (Int,Int) -> (Int, Int) -> Gen VarP' -> Gen [[VarP]]
+elementAt (x', y') (x, y) a = 
+    sequence [ sequence [ element (x'',y'') 
+        | y'' <- [0..(y-1)]] 
+            | x'' <- [0..(x-1)]]
+    where element (x, y) | x' == x && y' == y = liftM Cursor a
+                         | otherwise = liftM NonCursor a
+
+instance Arbitrary (GridPatt (Int, Int) VarP) where
+    arbitrary = do 
+        x <- choose (1, 10)
+        y <- choose (1, 10)
+        x' <- choose (0, x-1)
+        y' <- choose (0, y-1)
+        xs <- elementAt (x', y') (x, y) arbitrary
+        return (GridPatt2D x y xs)
+
+instance Arbitrary VarP where
+    arbitrary = liftM NonCursor arbitrary
+
+instance Arbitrary VarP' where
+    arbitrary = oneof [ {-liftM PatternVar arbitrary-}
+                      {-,-} return PatternBlank]
+
+prop_regular :: GridPatt (Int, Int) VarP -> Bool
+prop_regular (GridPatt2D x y xs) = all (\ i -> length i == y) xs
+    && length xs == x
+
+hasCursor xs = any cur (concat xs)
+    where cur (Cursor _) = True
+          cur (NonCursor _) = False
+prop_has_cursor :: GridPatt (Int, Int) VarP -> Bool
+prop_has_cursor (GridPatt2D _ _ xs) = hasCursor xs
+
+prop_pos_dim :: GridPatt (Int, Int) VarP -> Bool
+prop_pos_dim (GridPatt2D x y _) = x >= 0 && y >= 0
+
+prop_centre_preserve :: GridPatt (Int, Int) VarP -> Bool
+prop_centre_preserve grid = prop_regular (centre grid)
+
+prop_pos_f :: (forall a. GridIx a => a -> a -> a) -> 
+              GridPatt (Int, Int) VarP -> Bool 
+prop_pos_f f grid = x >= 0 && y >= 0
+    where (x, y) = f loc bounds
+          loc = cursorLoc grid
+          bounds = size grid
+
+prop_pos_coff :: GridPatt (Int, Int) VarP -> Bool
+prop_pos_coff grid = prop_pos_f coffset grid
+
+prop_pos_roff :: GridPatt (Int, Int) VarP -> Bool
+prop_pos_roff grid = prop_pos_f roffset grid

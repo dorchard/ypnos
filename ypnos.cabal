@@ -16,8 +16,8 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  exposed-modules:  Ypnos, Ypnos.CUDA, Ypnos.Core.Grid
-  other-modules:    Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, 
+  exposed-modules:  Ypnos, Ypnos.CUDA, Ypnos.Core.Grid,
+                    Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, 
                     Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
                     Ypnos.Core.Combinators 
   hs-source-dirs:   src
