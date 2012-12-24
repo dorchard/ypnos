@@ -21,7 +21,8 @@ fun_tests = testGroup "Ypnos.CUDA.Expr.Fun"
       , testProperty "Has a cursor" prop_has_cursor ]
     , testProperty "The roffset is always positive" prop_pos_roff
     , testProperty "The coffset is always positive" prop_pos_coff
-    , testProperty "Centring preserves regularity" prop_centre_preserve ]
+    , testProperty "Centring preserves regularity" prop_centre_preserve 
+    , testProperty "The cursor is centred" prop_centre]
 
 
 elementAt :: (Int,Int) -> (Int, Int) -> Gen VarP' -> Gen [[VarP]]
@@ -76,3 +77,10 @@ prop_pos_coff grid = prop_pos_f coffset grid
 
 prop_pos_roff :: GridPatt (Int, Int) VarP -> Bool
 prop_pos_roff grid = prop_pos_f roffset grid
+
+prop_centre :: GridPatt (Int, Int) VarP -> Bool
+prop_centre grid = expected == actual
+    where expected = (x `div` 2, y `div` 2)
+          actual = cursorLoc grid'
+          (x, y) = size grid'
+          grid' = centre grid
