@@ -94,10 +94,10 @@ instance (Shape sh,
          Elt a, Elt b, Elt c) => 
          ReduceGrid (Array sh a) (Exp a) (Exp b) (Exp c) where
     reduceG (Reducer inter comb def conv) grid =
-        (conv . fold' . zip) g
+        conv folded
         where 
-              fold' = the . foldAll comb def
-              zip = \ x -> zipWith inter x defG
+              folded = the $ foldAll comb def zipped
+              zipped = zipWith inter g defG
               defG = reshape sh $ replicate (lift (Z :.s )) (unit def)
               s = arraySize sh'
               sh' = arrayShape grid
