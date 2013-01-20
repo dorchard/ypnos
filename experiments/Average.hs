@@ -18,9 +18,9 @@ import Data.Array.IArray
 import Data.Array.Unboxed
 
 avg :: Floating (Exp a) => Stencil3x3 a -> Exp a
-avg ((a, b, c),
+avg ((_, b, _),
      (d, e, f),
-     (g, h, i)) = (a + b + c + d + e + f + g + h + i)/9
+     (_, h, _)) = ({-a +-} b + {-c +-} d + e + f + {-g +-} h {-+ i-})/9
 
 runAvg :: (IsFloating a, Elt a) => [a] -> Int -> Int -> [a]
 runAvg xs x y = toList $ Acc.run (stencil avg Clamp acc_xs)
@@ -42,7 +42,7 @@ runAvg' xs = grid2List (run avg' grid)
 grid2List :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> [a]
 grid2List (Grid acc _ _ _ _) = elems acc
 
-avg2D :: Floating (Exp a) => Stencil3x3 a -> Exp a
+avg2D :: Floating (Exp a) => Stencil3x5 a -> Exp a
 avg2D = [fun| X*Y:|a  b c|
                   |d  e f|
                   |g @h i| -> (a + b + c + d + e + f + g + h + i)/9|]

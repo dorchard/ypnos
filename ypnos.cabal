@@ -37,6 +37,7 @@ test-suite tests
   build-depends:    base, 
                     ypnos,
                     test-framework,
+                    accelerate ==0.13.*, 
                     test-framework-quickcheck2,
                     test-framework-hunit,
                     QuickCheck,
