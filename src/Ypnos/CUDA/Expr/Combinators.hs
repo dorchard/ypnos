@@ -27,8 +27,10 @@ import Prelude hiding (map, zipWith, fold, replicate)
 class RunGrid grid sten where
     runG :: sten -> grid -> grid
 
-class ReduceGrid grid a b c where
-    reduceG :: Reducer a b c-> grid -> c
+class ReduceGrid grid a b c where   
+    type Fun1 a b :: *
+    type Fun2 a b c :: *
+    reduceG :: Reducer a b c -> grid a -> c
 
 --Utils
 {-useGrid :: -}
@@ -82,30 +84,29 @@ run f (Grid arr d c (b1, b2) boundaries) =
 --The reduce primitive
 
 data Reducer a b c where
-    Reducer ::   (a -> b -> b) 
-              -> (b -> b -> b) 
+    Reducer ::   (Fun2 a b b) 
+              -> (Fun2 b b b) 
               -> b
-              -> (b -> c)
+              -> (Fun1 b c)
               -> Reducer a b c
 
 mkReducer = Reducer
 
 instance (Shape sh,
          Elt a, Elt b, Elt c) => 
-         ReduceGrid (Array sh a) (Exp a) (Exp b) (Exp c) where
+         ReduceGrid (Array sh) a b c where
+    type Fun2 a b c = Exp a -> Exp b -> Exp c
+    type Fun1 a b = Exp a -> Exp b
     reduceG (Reducer inter comb def conv) grid =
-        conv folded
+        only $ Acc.run converted
         where 
-              folded = the $ foldAll comb def zipped
+              converted = map conv folded              
+              folded = foldAll comb def' zipped
               zipped = zipWith inter g defG
-              defG = reshape sh $ replicate (lift (Z :.s )) (unit def)
-              s = arraySize sh'
-              sh' = arrayShape grid
-              sh = shape g
+              defG = use $ fromList sh (cycle [def])
+              sh = arrayShape grid
               g = use grid
-
-unexp :: Elt a => Exp a -> a
-unexp = only . Acc.run . unit
+              def' = the $ use $ fromList Z [def]
 
 only :: Scalar a -> a
 only arr = (toList arr) !! 0
