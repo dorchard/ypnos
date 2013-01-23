@@ -24,8 +24,9 @@ import Prelude hiding (map, zipWith, fold, replicate)
     {-listGrid :: (Dimension d) => [a] -> (Index d) -> grid-}
     {-gridData :: grid -> [a]-}
 
-class RunGrid grid sten where
-    runG :: sten -> grid -> grid
+class RunGrid grid sh where
+    data Sten a b
+    runG :: Sten sh a b -> grid a -> grid b
 
 class ReduceGrid grid a b c where   
     type Fun1 a b :: *
@@ -58,11 +59,13 @@ type instance IShape (Dim x :* Dim y) = Z :. Int :. Int
     {-listGrid = undefined-}
     {-gridData = undefined-}
 
-data AStencil sh x where
-    AStencil :: Stencil sh x sten => (sten -> Exp x) -> AStencil sh x
-
-instance RunGrid (Array sh x) (AStencil sh x) where 
-    runG (AStencil f) = Acc.run . (stencil f Clamp) . use 
+instance RunGrid (Array sh) sh where 
+    data Sten sh a b where
+        Sten :: (Shape sh, Stencil sh a sten',
+                 Elt a, Elt b) =>
+                (sten' -> Exp b)
+                -> Sten sh a b
+    runG (Sten f) = Acc.run . (stencil f Clamp) . use 
 
 run :: forall x y d sh sten b dyn. 
     (IArray UArray x, IArray UArray y, 
