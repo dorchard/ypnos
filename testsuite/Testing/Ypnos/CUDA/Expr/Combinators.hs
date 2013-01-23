@@ -25,7 +25,7 @@ red f d a = foldr f d (toList a)
 prop_reduce :: [Int] -> Int -> Int -> Gen Prop
 prop_reduce xs x y = 50 > x && x >= 0 && 50 > y && y >= 0 && (length xs) > 0 ==> 
     red (+) 0 arr == (reduceG reducer arr)
-    where reducer = mkReducer (+) (+) 0 id 
+    where reducer = mkReducer (Fun2 (+)) (Fun2 (+)) 0 (Fun1 id) 
           arr = fromList (Z :. x :. y) (cycle xs) 
 
 

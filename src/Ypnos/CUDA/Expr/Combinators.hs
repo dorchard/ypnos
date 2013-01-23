@@ -28,10 +28,10 @@ class RunGrid grid sh where
     data Sten a b
     runG :: Sten sh a b -> grid a -> grid b
 
-class ReduceGrid grid a b c where   
-    type Fun1 a b :: *
-    type Fun2 a b c :: *
-    reduceG :: Reducer a b c -> grid a -> c
+class ReduceGrid grid where   
+    data Fun1 a b 
+    data Fun2 a b c 
+    reduceG :: Reducer a c -> grid a -> c
 
 --Utils
 {-useGrid :: -}
@@ -86,21 +86,28 @@ run f (Grid arr d c (b1, b2) boundaries) =
 
 --The reduce primitive
 
-data Reducer a b c where
+data Reducer a c where
     Reducer ::   (Fun2 a b b) 
               -> (Fun2 b b b) 
               -> b
               -> (Fun1 b c)
-              -> Reducer a b c
+              -> Reducer a c
 
 mkReducer = Reducer
 
-instance (Shape sh,
-         Elt a, Elt b, Elt c) => 
-         ReduceGrid (Array sh) a b c where
-    type Fun2 a b c = Exp a -> Exp b -> Exp c
-    type Fun1 a b = Exp a -> Exp b
-    reduceG (Reducer inter comb def conv) grid =
+instance (Shape sh) => ReduceGrid (Array sh) where
+    data Fun2 a b c where
+        Fun2 :: (Elt a, Elt b, Elt c) => 
+                (Exp a -> Exp b -> Exp c)
+                -> Fun2 a b c
+    data Fun1 a b where
+        Fun1 :: (Elt a, Elt b) =>
+                (Exp a -> Exp b)
+                -> Fun1 a b 
+    reduceG (Reducer (Fun2 inter)
+                     (Fun2 comb)
+                     def 
+                     (Fun1 conv)) grid =
         only $ Acc.run converted
         where 
               converted = map conv folded              
