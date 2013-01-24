@@ -59,7 +59,7 @@ type instance IShape (Dim x :* Dim y) = Z :. Int :. Int
     {-listGrid = undefined-}
     {-gridData = undefined-}
 
-instance RunGrid (Array sh) sh where 
+instance (arr ~ Array sh) => RunGrid (arr) sh where 
     data Sten sh a b where
         Sten :: (Shape sh, Stencil sh a sten',
                  Elt a, Elt b) =>
@@ -97,17 +97,17 @@ mkReducer = Reducer
 
 instance (Shape sh) => ReduceGrid (Array sh) where
     data Fun2 a b c where
-        Fun2 :: (Elt a, Elt b, Elt c) => 
+        Fun2A :: (Elt a, Elt b, Elt c) => 
                 (Exp a -> Exp b -> Exp c)
                 -> Fun2 a b c
     data Fun1 a b where
-        Fun1 :: (Elt a, Elt b) =>
+        Fun1A :: (Elt a, Elt b) =>
                 (Exp a -> Exp b)
                 -> Fun1 a b 
-    reduceG (Reducer (Fun2 inter)
-                     (Fun2 comb)
+    reduceG (Reducer (Fun2A inter)
+                     (Fun2A comb)
                      def 
-                     (Fun1 conv)) grid =
+                     (Fun1A conv)) grid =
         only $ Acc.run converted
         where 
               converted = map conv folded              
