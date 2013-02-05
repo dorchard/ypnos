@@ -29,6 +29,11 @@ The following is desugared from !!! inside a boundary macro
 > ypnosReservedBoundaryIndex :: (IArray UArray a, Dimension d) => Grid d Nil Static a -> Index d -> a
 > ypnosReservedBoundaryIndex (Grid arr _ _ _ _) i = arr!i
 
+Return a tuple with the size of the array
+
+> size :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> Index d
+> size (Grid _ _ _ (_, extent) _) = extent
+
 Hidden by grid patterns
 
 > {-# INLINE index1D #-}
