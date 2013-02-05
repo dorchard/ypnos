@@ -2,4 +2,5 @@
 *.hi
 dist/
 *.swp
+*.csv
 
