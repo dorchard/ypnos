@@ -25,11 +25,6 @@ import Debug.Trace
 
 import Data.List hiding (find)
 
--- * The Parser Bit
-
-fvar = varE . mkName
-fcon = conE . mkName
-
 -- |The 'QuasiQuoter' that converts Ypnos syntax into Haskell code.
 fun :: QuasiQuoter
 fun = QuasiQuoter { quoteExp = quoteExprExp,

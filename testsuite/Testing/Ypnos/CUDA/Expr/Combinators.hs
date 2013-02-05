@@ -2,6 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Testing.Ypnos.CUDA.Expr.Combinators where
 
@@ -12,20 +15,28 @@ import Test.QuickCheck
 import Data.List
 
 import Ypnos.CUDA
+import qualified Ypnos as Y
+import Ypnos.Core.Grid
 
-import Data.Array.Accelerate
+import Data.Array.Accelerate hiding (fst, snd, size, all)
 import qualified Data.Array.Accelerate.Interpreter as I
+
+import Data.Array.Unboxed hiding (Array)
 
 import Control.Monad
 
 comb_tests = testGroup "Ypnos.CUDA.Expr.Combinators"
     [ testProperty "Reduce" prop_reduce
-    , testProperty "Run" prop_run]
+    , testProperty "Run against accelerate" prop_run
+   -- , testProperty "Run against original Ypnos" prop_run2
+    ]
 
 red :: Shape sh => (a -> a -> a) -> a -> Array sh a -> a
 red f d a = foldr f d (toList a)
 
-bounded l x y = l > x && x >= 0 && l > y && y >= 0
+bounded l x y = upper l [x,y] && lower 0 [x,y]
+upper l = all (\ x -> x < l)
+lower l = all (\ x -> x >= l)
 
 prop_reduce :: [Int] -> Int -> Int -> Gen Prop
 prop_reduce xs x y =  bounded 50 x y && (length xs) > 0 ==> 
@@ -40,7 +51,7 @@ avg ((a, b, c),
 
 runAvg :: (IsFloating a, Elt a) => 
           (Array DIM2 a) -> (Array DIM2 a)
-runAvg xs = I.run (stencil avg Clamp acc_xs)
+runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
 avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
@@ -52,14 +63,53 @@ avgY = [fun| X*Y:|a  b c|
 runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
 runAvgY xs = runG (Sten avgY) xs
 
+gx g = fst (size g) 
+gy g = snd (size g)
+
+mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
+                          (-1, *j) g -> g!!!(0, j) -- left
+                          (+1, *j) g -> g!!!(gx g, j) -- right
+                          (*i, +1) g -> g!!!(i, gy g)
+                          (-1, -1) g -> g!!!(0, 0) -- top corners
+                          (+1, -1) g -> g!!!(gx g, 0) -- top corners
+                          (-1, +1) g -> g!!!(0, gy g) -- top corners
+                          (+1, +1) g -> g!!!(gx g, gy g) |]
+
+zeroBound = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
+
+avgY' :: ((InBoundary (IntT (Neg (S Zn)), IntT (Neg (S Zn))) b)
+         ,(InBoundary (IntT (Neg (S Zn)), IntT (Pos (S Zn))) b)
+         ,(InBoundary (IntT (Pos (S Zn)), IntT (Neg (S Zn))) b)
+         ,(InBoundary (IntT (Pos (S Zn)), IntT (Pos (S Zn))) b)
+         ,(InBoundary (IntT (Neg (S Zn)), IntT (Pos (Zn))) b)
+         ,(InBoundary (IntT (Pos (S Zn)), IntT (Pos (Zn))) b)
+         ,(InBoundary (IntT (Pos (Zn)), IntT (Neg (S Zn))) b)
+         ,(InBoundary (IntT (Pos (Zn)), IntT (Pos (S Zn))) b)
+         , IArray UArray a
+         , Fractional a
+         )
+         => Grid (Dim X :* Dim Y) b dyn a -> a
+avgY' = [Y.fun| X*Y:|a  b c|
+                 |d @e f|
+                 |g  h i| 
+        -> (a + b + c + d + e + f + g + h + i)/9|]
+
+runAvgY' :: [Float] -> (Int,Int) -> [Float]
+runAvgY' xs (x, y) = gridData $ Y.run avgY' xs'
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) zeroBound
+    -- TODO: this should eventually use mirror.
+
 raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float)) 
             -> [Float] -> (Int,Int) -> [Float]
 raiseToList f xs (x,y) = toList $ f arr
     where arr = fromList (Z :. x :. y) xs'
           xs' = cycle xs
 
-prop_run :: [Float] -> (Int, Int) -> Gen Prop
-prop_run xs (x,y) = bounded 10 x y && length xs > 0 ==>
-    runAvg' xs (x,y) == runAvgY' xs (x,y)
-    where runAvg' = raiseToList runAvg
-          runAvgY' = raiseToList runAvgY
+runner :: ([Float] -> (Int,Int) -> [Float])
+       -> ([Float] -> (Int,Int) -> [Float])
+       -> [Float] -> (Int,Int) -> Gen Prop
+runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 ==>
+    run1 xs (x,y) == run2 xs (x,y)
+
+prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)
+prop_run2 = runner (runAvgY') (raiseToList runAvgY)
