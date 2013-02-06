@@ -89,6 +89,16 @@ OLD form
 >             in 
 >               map snd xs'
 
+> class (Dimension d) => Size d where
+>     size :: Grid d b i a -> (Index d)
+
+> instance (DimIdentifier d) => Size (Dim d) where
+>     size (Grid _ _ _ (l, b) _) = b - l
+
+> instance (DimIdentifier d, DimIdentifier d') => Size ((Dim d) :* (Dim d')) where
+>     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
+
+
 > -- Constructors
 
 > listGridNoBoundary :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [a] -> Grid d Nil Static a
@@ -98,6 +108,8 @@ OLD form
 > gridNoBoundary :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [(Index d, a)] -> Grid d Nil Static a
 > gridNoBoundary d origin extent xs = Grid arr d origin (origin, (dec extent)) NilB
 >                              where arr = array (origin, (dec extent)) xs
+
+
 
 > grid :: (IArray UArray a, Dimension d, 
 >                  ReifiableIx upper (Index d),
