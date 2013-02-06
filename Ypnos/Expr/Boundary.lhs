@@ -146,7 +146,7 @@
 > interpretSubRegion (Positive n) = intPat n
 
 > interpretRegionDescriptor :: RegionDescriptor -> (Q Pat, Q Type)
-> interpretRegionDescriptor regions = let (pats, types) = unzip $ map interpretSubRegion (reverse regions)
+> interpretRegionDescriptor regions = let (pats, types) = unzip $ map interpretSubRegion regions
 >                                     in (tupP pats, foldl appT (tupleT (length types)) types)
 
 > fcon c = conE $ mkName c

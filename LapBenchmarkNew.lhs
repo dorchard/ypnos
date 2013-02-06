@@ -22,7 +22,7 @@
 > go fname =   do -- Read image file
 >                 -- Run Ypnos stencil
 >                 (x, y, img) <- read_ppm fname
->                 let g = listGrid (X :* Y) (0, 0) (x, y) img zeroBound
+>                 let g = listGrid (Dim X :* Dim Y) (0, 0) (x, y) img zeroBound
 >                 let g' = applyConvert laplace2D g
 >                 -- Write data to image file
 >                 write_ppm (fname++"-ypnos") x y (gridData g')

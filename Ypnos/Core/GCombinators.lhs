@@ -54,6 +54,7 @@ import Control.Functor.Pointed
 
 >     apply :: (Inv c a, Inv c b, InvF c a b) => (c a -> b) -> c a -> c b
 >     apply = rcobind
+
     
 
 > class (Container c) => NavigatableContainer c where
@@ -74,7 +75,8 @@ import Control.Functor.Pointed
 > -------------------------- GRID -------------------------
 
 > instance (Dimension d, RComonad (Grid d (b, dyn))) => Container (Grid d (b, dyn)) where
-> instance RComonad (Grid (Dim d :* Dim d') b) => Container (Grid (Dim d :* Dim d') b) where
+
+ instance RComonad (Grid (Dim d :* Dim d') b) => Container (Grid (Dim d :* Dim d') b) where
 
 > type instance CObjs (Grid d i) a = IArray UArray a
 > type instance CMorphs (Grid d i) a b = ()

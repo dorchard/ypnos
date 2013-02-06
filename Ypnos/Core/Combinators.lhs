@@ -143,6 +143,15 @@ OLD form
 >                 xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
 >                 arr = array (origin', dec extent') (es++xs')
 
+> class (Dimension d) => Size d where
+>     size :: Grid d i a -> (Index d)
+
+> instance (DimIdentifier d) => Size (Dim d) where
+>     size (Grid _ _ _ (l, b) _) = b - l
+
+> instance (DimIdentifier d, DimIdentifier d') => Size ((Dim d) :* (Dim d')) where
+>     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
+
 
 > -- Run stencil computations
 

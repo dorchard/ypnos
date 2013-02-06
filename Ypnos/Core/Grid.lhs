@@ -265,8 +265,9 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 >             BoundaryList ixs dyn lower upper d a -> Grid d (Nil, Static) a ->
 >             Index d -> Index d -> [(Index d, a)]
 > boundMap d NilB _ _ _ = []
-> boundMap d (ConsB f fs) g0 origin extent = (buildBoundary d f (origin, dec extent) g0) ++
->                                            boundMap d fs g0 origin extent
+> boundMap d (ConsB f fs) g0 origin extent = let z = (buildBoundary d f (origin, dec extent) g0) 
+>                                            in (buildBoundary d f (origin, dec extent) g0) ++
+>                                                   boundMap d fs g0 origin extent
 
 
 > -- Reify nat types as nat data and int data
@@ -402,8 +403,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 >             x = typeToIntIx (undefined::(IntT n))
 >             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
->         in
->             map (\y -> ((x', y),
+>         in  map (\y -> ((x', y),
 >                 f ((typeToSymIx (undefined::(IntT n)), y), grid))) (range (y0, yn))
 
 > instance (ReifiableIx (IntT n) Int) =>
@@ -425,7 +425,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >         in
->             map (\x -> ((x, y'),
+>              map (\x -> ((x, y'),
 >                  f ((x, typeToSymIx (undefined::(IntT m))), grid))) (range (x0, xn))
 
 > instance (ReifiableIx (IntT m) Int) =>
