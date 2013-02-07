@@ -1,6 +1,8 @@
-> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData,
->               indexC, index1D, index2D, index3D, (!!!), size, unsafeIndex2D,
->               unsafeIndex1D, fun, boundary, run, runA) where
+> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, size,
+>               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
+>               fun, boundary,
+>               run, runA
+>               ) where
 
 > import Prelude hiding (iterate)
 

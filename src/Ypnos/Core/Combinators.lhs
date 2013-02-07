@@ -29,11 +29,6 @@ The following is desugared from !!! inside a boundary macro
 > ypnosReservedBoundaryIndex :: (IArray UArray a, Dimension d) => Grid d Nil Static a -> Index d -> a
 > ypnosReservedBoundaryIndex (Grid arr _ _ _ _) i = arr!i
 
-Return a tuple with the size of the array
-
-> size :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> Index d
-> size (Grid _ _ _ (_, extent) _) = extent
-
 Hidden by grid patterns
 
 > {-# INLINE index1D #-}
@@ -94,6 +89,16 @@ OLD form
 >             in 
 >               map snd xs'
 
+> class (Dimension d) => Size d where
+>     size :: Grid d b i a -> (Index d)
+
+> instance (DimIdentifier d) => Size (Dim d) where
+>     size (Grid _ _ _ (l, b) _) = b - l
+
+> instance (DimIdentifier d, DimIdentifier d') => Size ((Dim d) :* (Dim d')) where
+>     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
+
+
 > -- Constructors
 
 > listGridNoBoundary :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [a] -> Grid d Nil Static a
@@ -103,6 +108,8 @@ OLD form
 > gridNoBoundary :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [(Index d, a)] -> Grid d Nil Static a
 > gridNoBoundary d origin extent xs = Grid arr d origin (origin, (dec extent)) NilB
 >                              where arr = array (origin, (dec extent)) xs
+
+
 
 > grid :: (IArray UArray a, Dimension d, 
 >                  ReifiableIx upper (Index d),

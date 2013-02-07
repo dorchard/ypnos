@@ -1,5 +1,6 @@
 > {-# LANGUAGE QuasiQuotes #-}
 > {-# LANGUAGE TemplateHaskell #-}
+> {-# LANGUAGE ImplicitParams #-}
 
 > module Ypnos.Expr.Fun where
 
@@ -17,14 +18,14 @@
 > fvar = varE . mkName
 > fcon = conE . mkName
 
-> fun :: QuasiQuoter
+> fun :: (?safe :: Bool) => QuasiQuoter
 > fun = QuasiQuoter { quoteExp = quoteExprExp,
 >                     quotePat = quoteExprPat --,
 >                     --quoteType = undefined,
 >                     --quoteDec = undefined
 >                   }
 
-> quoteExprExp :: String -> ExpQ
+> quoteExprExp :: (?safe :: Bool) => String -> ExpQ
 > quoteExprExp input = do loc <- location
 >                         let pos = (loc_filename loc,
 >                                fst (loc_start loc),
@@ -33,7 +34,7 @@
 >                         dataToExpQ ((const Nothing) `extQ` interpret) expr
 > 
 
-> quoteExprPat :: String -> PatQ
+> quoteExprPat :: (?safe :: Bool) => String -> PatQ
 > quoteExprPat input = do loc <- location
 >                         let pos = (loc_filename loc,
 >                                fst (loc_start loc),
@@ -41,7 +42,7 @@
 >                         expr <- (parseExpr gridFun) pos input
 >                         dataToPatQ (const Nothing) expr
 
-> interpret :: GridFun -> Maybe (Q Exp)
+> interpret :: (?safe :: Bool) => GridFun -> Maybe (Q Exp)
 > interpret (GridFun pattern body) = 
 >     case parseExp body of
 >       Left x -> error x
@@ -68,7 +69,7 @@
  [valD (varP $ mkName v) (normalB [| $(fvar "unsafeIndex1D") x $(fvar "reserved_grid") |]) [], valD (wildP) (normalB e) []]
 
 > mkLetBind2D v x y = [valD (varP $ mkName v) (normalB
->                       [| $(fvar "index2D") 
+>                       [| $(fvar (if ?safe then "index2Dsafe" else "index2D"))
 >                          ($(intToIntExp $ x), $(intToIntExp $ y)) (x, y)
 >                          $(fvar "reserved_grid")|]) []] 
 
@@ -109,7 +110,7 @@
 >            in
 >                (top++centre++bottom)++(toGrid2DVLets ys s (n+1))
 
-> interpretPattern :: GridPattern ->  [DecQ]
+> interpretPattern :: (?safe :: Bool) => GridPattern -> [DecQ]
 > interpretPattern (GridPattern1D dim vars) = 
 >       toGrid1DLets l c r
 >         where
