@@ -5,6 +5,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ImplicitParams #-}
 
 module Testing.Ypnos.CUDA.Expr.Combinators where
 
@@ -18,7 +19,7 @@ import Ypnos.CUDA
 import qualified Ypnos as Y
 import Ypnos.Core.Grid
 
-import Data.Array.Accelerate hiding (fst, snd, size, all)
+import Data.Array.Accelerate hiding (fst, snd, size, all, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
 
 import Data.Array.Unboxed hiding (Array)
@@ -28,7 +29,7 @@ import Control.Monad
 comb_tests = testGroup "Ypnos.CUDA.Expr.Combinators"
     [ testProperty "Reduce" prop_reduce
     , testProperty "Run against accelerate" prop_run
-   -- , testProperty "Run against original Ypnos" prop_run2
+    --, testProperty "Run against original Ypnos" prop_run2
     ]
 
 red :: Shape sh => (a -> a -> a) -> a -> Array sh a -> a
@@ -77,6 +78,7 @@ mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
 
 zeroBound = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
+
 avgY' :: ((InBoundary (IntT (Neg (S Zn)), IntT (Neg (S Zn))) b)
          ,(InBoundary (IntT (Neg (S Zn)), IntT (Pos (S Zn))) b)
          ,(InBoundary (IntT (Pos (S Zn)), IntT (Neg (S Zn))) b)
@@ -89,14 +91,14 @@ avgY' :: ((InBoundary (IntT (Neg (S Zn)), IntT (Neg (S Zn))) b)
          , Fractional a
          )
          => Grid (Dim X :* Dim Y) b dyn a -> a
-avgY' = [Y.fun| X*Y:|a  b c|
-                 |d @e f|
-                 |g  h i| 
+avgY' = [Y.safeFun| X*Y:|a  b c|
+                      |d @e f|
+                      |g  h i| 
         -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
 runAvgY' xs (x, y) = gridData $ Y.run avgY' xs'
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) zeroBound
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
     -- TODO: this should eventually use mirror.
 
 raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float)) 

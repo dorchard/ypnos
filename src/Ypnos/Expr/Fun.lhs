@@ -18,6 +18,8 @@
 > fvar = varE . mkName
 > fcon = conE . mkName
 
+> safeFun = let ?safe = True in fun
+> unsafeFun = let ?safe = False in fun
 > fun :: (?safe :: Bool) => QuasiQuoter
 > fun = QuasiQuoter { quoteExp = quoteExprExp,
 >                     quotePat = quoteExprPat --,
@@ -69,7 +71,7 @@
  [valD (varP $ mkName v) (normalB [| $(fvar "unsafeIndex1D") x $(fvar "reserved_grid") |]) [], valD (wildP) (normalB e) []]
 
 > mkLetBind2D v x y = [valD (varP $ mkName v) (normalB
->                       [| $(fvar (if ?safe then "index2Dsafe" else "index2D"))
+>                       [| $(fvar (if ?safe then "index2D" else "unsafeIndex2D"))
 >                          ($(intToIntExp $ x), $(intToIntExp $ y)) (x, y)
 >                          $(fvar "reserved_grid")|]) []] 
 
