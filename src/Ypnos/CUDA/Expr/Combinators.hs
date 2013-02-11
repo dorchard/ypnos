@@ -67,7 +67,7 @@ instance (arr ~ Array sh) => RunGrid (arr) sh where
                 -> Sten sh a b
     runG (Sten f) = Acc.run . (stencil f (Mirror)) . use 
 
-run :: forall x y d sh sten b dyn. 
+run' :: forall x y d sh sten b dyn. 
     (IArray UArray x, IArray UArray y, 
     Dimension d, 
     Stencil sh x sten, 
@@ -77,7 +77,7 @@ run :: forall x y d sh sten b dyn.
     (sten -> Exp y) 
     -> Grid d b dyn x 
     -> Grid d Nil Static y
-run f (Grid arr d c (b1, b2) boundaries) =
+run' f (Grid arr d c (b1, b2) boundaries) =
     Grid (toIArray res) d c (b1, b2) NilB
     where res = Acc.run (sten_acc) :: Array sh y
           sten_acc = stencil f (Mirror) acc 

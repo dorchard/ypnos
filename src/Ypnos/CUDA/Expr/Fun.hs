@@ -26,8 +26,8 @@ import Debug.Trace
 import Data.List hiding (find)
 
 -- |The 'QuasiQuoter' that converts Ypnos syntax into Haskell code.
-fun :: QuasiQuoter
-fun = QuasiQuoter { quoteExp = quoteExprExp,
+funGPU :: QuasiQuoter
+funGPU = QuasiQuoter { quoteExp = quoteExprExp,
                    quotePat = quoteExprPat,
                    quoteType = undefined,
                    quoteDec = undefined

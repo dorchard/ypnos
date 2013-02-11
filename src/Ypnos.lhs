@@ -1,6 +1,6 @@
 > module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, size,
 >               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
->               fun, safeFun, unsafeFun, boundary,
+>               fun, unsafeFun, boundary,
 >               run, runA
 >               ) where
 

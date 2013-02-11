@@ -16,10 +16,9 @@ import Test.QuickCheck
 import Data.List
 
 import Ypnos.CUDA
-import qualified Ypnos as Y
 import Ypnos.Core.Grid
 
-import Data.Array.Accelerate hiding (fst, snd, size, all, fromIntegral)
+import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
 
 import Data.Array.Unboxed hiding (Array)
@@ -56,7 +55,7 @@ runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
 avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
-avgY = [fun| X*Y:|a  b c|
+avgY = [funGPU| X*Y:|a  b c|
                  |d @e f|
                  |g  h i| 
         -> (a + b + c + d + e + f + g + h + i)/9|]
@@ -91,13 +90,13 @@ avgY' :: ((InBoundary (IntT (Neg (S Zn)), IntT (Neg (S Zn))) b)
          , Fractional a
          )
          => Grid (Dim X :* Dim Y) b dyn a -> a
-avgY' = [Y.safeFun| X*Y:|a  b c|
-                      |d @e f|
-                      |g  h i| 
+avgY' = [fun| X*Y:|a  b c|
+                        |d @e f|
+                        |g  h i| 
         -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
-runAvgY' xs (x, y) = gridData $ Y.run avgY' xs'
+runAvgY' xs (x, y) = gridData $ run avgY' xs'
     where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
     -- TODO: this should eventually use mirror.
 
