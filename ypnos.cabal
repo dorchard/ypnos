@@ -21,9 +21,9 @@ library
                     Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
                     Ypnos.Core.Combinators 
   hs-source-dirs:   src
-  build-depends:    base ==4.6.*, 
-                    accelerate ==0.13.*, 
-                    template-haskell ==2.8.*, 
+  build-depends:    base, 
+                    accelerate, 
+                    template-haskell, 
                     syb ==0.3.*, 
                     array ==0.4.*, 
                     directory ==1.2.*, 

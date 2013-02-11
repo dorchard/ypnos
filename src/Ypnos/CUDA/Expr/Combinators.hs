@@ -16,7 +16,7 @@ import Data.Array.Unboxed hiding (Array)
 
 import Ypnos.Core.Grid
 
-import Prelude hiding (map, zipWith, fold, replicate)
+import Prelude hiding (map, zipWith, replicate)
 
 -- Grid class
 
@@ -25,7 +25,7 @@ import Prelude hiding (map, zipWith, fold, replicate)
     {-gridData :: grid -> [a]-}
 
 class RunGrid grid sh where
-    data Sten a b
+    data Sten sh a b
     runG :: Sten sh a b -> grid a -> grid b
 
 class ReduceGrid grid where   
