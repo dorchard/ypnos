@@ -370,7 +370,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >          in
->             [((x, y), f ((typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))), grid))] 
+>             [((x', y'), f ((typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))), grid))] 
 
 
 > instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
@@ -384,7 +384,7 @@ instance (Dimension (Dim d), Dimension (Dim d'), Dimension (Dim d'')) => (Dimens
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >          in
->             [((x, y), f (typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))))]
+>             [((x', y'), f (typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))))]
 
 > instance (ReifiableIx (IntT n) Int) =>
 >          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, Int) Dynamic where
