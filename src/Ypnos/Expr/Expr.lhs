@@ -183,6 +183,7 @@ Parse grid patterns
 >                      string "|";
 >                      spaces;
 >                      ps <- manyTill (do {v <- varPattern; spaces; return v}) (string "|");
+>                      spaces;
 >                      return ps;
 
 > gridPattern :: Parser GridPattern
