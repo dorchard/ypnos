@@ -17,7 +17,7 @@ import Data.Array.Unboxed hiding (Array)
 import Ypnos.Core.Grid
 import Ypnos.Core.Combinators
 
-import Prelude hiding (map, zipWith, fold, replicate)
+import Prelude hiding (map, zipWith, replicate)
 
 -- Grid class
 

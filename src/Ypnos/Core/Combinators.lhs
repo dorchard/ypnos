@@ -26,7 +26,7 @@ Ypnos classes.
 
 
 > class RunGrid grid sh where
->     data Sten a b
+>     data Sten sh a b
 >     runG :: Sten sh a b -> grid a -> grid b
 > 
 > class ReduceGrid grid where   

@@ -19,7 +19,7 @@ import Ypnos
 import Ypnos.CUDA
 import Ypnos.Core.Grid
 
-import Data.Array.Accelerate hiding (fst, snd, size, all, fromIntegral)
+import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
 
 import Data.Array.Unboxed hiding (Array)
