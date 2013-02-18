@@ -18,12 +18,13 @@
 > fvar = varE . mkName
 > fcon = conE . mkName
 
-> fun :: (?safe :: Bool) => QuasiQuoter
-> fun = QuasiQuoter { quoteExp = quoteExprExp,
->                     quotePat = quoteExprPat --,
->                     --quoteType = undefined,
->                     --quoteDec = undefined
->                   }
+> fun :: QuasiQuoter
+> fun = let ?safe = False 
+>       in QuasiQuoter { quoteExp = quoteExprExp,
+>                        quotePat = quoteExprPat --,
+>                        --quoteType = undefined,
+>                        --quoteDec = undefined
+>                      }
 
 > quoteExprExp :: (?safe :: Bool) => String -> ExpQ
 > quoteExprExp input = do loc <- location
