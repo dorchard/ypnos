@@ -18,10 +18,10 @@
 > fvar = varE . mkName
 > fcon = conE . mkName
 
-> safeFun = let ?safe = True in fun
-> unsafeFun = let ?safe = False in fun
-> fun :: (?safe :: Bool) => QuasiQuoter
-> fun = QuasiQuoter { quoteExp = quoteExprExp,
+> safeFun = let ?safe = True in funCPU
+> unsafeFun = let ?safe = False in funCPU
+> funCPU :: (?safe :: Bool) => QuasiQuoter
+> funCPU = QuasiQuoter { quoteExp = quoteExprExp,
 >                     quotePat = quoteExprPat --,
 >                     --quoteType = undefined,
 >                     --quoteDec = undefined

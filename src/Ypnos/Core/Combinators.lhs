@@ -22,6 +22,27 @@
 
 > import Debug.Trace
 
+Ypnos classes.
+
+
+> class RunGrid grid sh where
+>     data Sten a b
+>     runG :: Sten sh a b -> grid a -> grid b
+> 
+> class ReduceGrid grid where   
+>     data Fun1 a b 
+>     data Fun2 a b c 
+>     reduceG :: Reducer a c -> grid a -> c
+
+> data Reducer a c where
+>     Reducer ::   (Fun2 a b b) 
+>               -> (Fun2 b b b) 
+>               -> b
+>               -> (Fun1 b c)
+>               -> Reducer a c
+> 
+> mkReducer = Reducer
+
 > -- Indexing
 
 The following is desugared from !!! inside a boundary macro
