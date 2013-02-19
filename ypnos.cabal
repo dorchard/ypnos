@@ -15,7 +15,8 @@ cabal-version: >=1.8
 library
   exposed-modules: Ypnos, Ypnos.Core.Grid,
                    Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun,
-                   Ypnos.Core.Combinators
+                   Ypnos.Core.Combinators, Ypnos.Core.Types, Ypnos.Core.Dimensions,
+                   Ypnos.Core.Boundary
   hs-source-dirs: src
   build-depends:  base,
                   template-haskell,

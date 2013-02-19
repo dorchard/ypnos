@@ -3,8 +3,10 @@
 > {-# LANGUAGE TypeOperators #-}
 > {-# LANGUAGE FlexibleContexts #-}
 > {-# LANGUAGE FlexibleInstances #-}
+> {-# LANGUAGE EmptyDataDecls #-}
 
 > module Ypnos.Core.Dimensions where
+
 > import Data.Array.IArray
 
 Dimensions

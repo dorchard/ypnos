@@ -17,7 +17,7 @@ import PPM.Image
 -- Run (outputs boat.512.ypnos.ppm)
 -- ./LaplaceExample boat.512 1 
 
-laplace2D = [fun| X*Y:| _  t  _ | 
+laplace2D = [fun| X*Y:| _  t  _ |
                       | l @c  r |
                       | _  b  _ | -> (t + l + c + r - 4*b) |]
 
