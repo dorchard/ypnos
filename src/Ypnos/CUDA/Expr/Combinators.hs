@@ -14,7 +14,9 @@ import Data.Array.Accelerate.Array.Sugar hiding (size, shape)
 import Data.Array.IArray hiding (Array)
 import Data.Array.Unboxed hiding (Array)
 
+import Ypnos.Core.Dimensions
 import Ypnos.Core.Grid
+import Ypnos.Core.Types
 import Ypnos.Core.Combinators
 
 import Prelude hiding (map, zipWith, replicate)

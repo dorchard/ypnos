@@ -178,11 +178,15 @@ Parse grid patterns
 >                        x -> NonCursor (PatternVar x));
 >               }
 
+> spaces' :: Parser ()
+> spaces' = skipMany (char ' ' <|> char '\t')
+
 > elementsPattern :: Parser [VarP]
 > elementsPattern = do spaces;
 >                      string "|";
 >                      spaces;
 >                      ps <- manyTill (do {v <- varPattern; spaces; return v}) (string "|");
+>                      spaces';
 >                      return ps;
 
 > gridPattern :: Parser GridPattern

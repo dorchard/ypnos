@@ -19,7 +19,8 @@ library
   exposed-modules:  Ypnos, Ypnos.CUDA, Ypnos.Core.Grid,
                     Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, 
                     Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
-                    Ypnos.Core.Combinators 
+                    Ypnos.Core.Combinators, Ypnos.Core.Types, Ypnos.Core.Dimensions
+                    Ypnos.Core.Boundary
   hs-source-dirs:   src
   build-depends:    base ==4.*, 
                     accelerate ==0.12.*,
@@ -56,4 +57,3 @@ benchmark main
                     array,
                     test-framework-quickcheck2,
                     QuickCheck
-

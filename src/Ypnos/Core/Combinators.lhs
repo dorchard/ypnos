@@ -8,10 +8,15 @@
 > {-# LANGUAGE ScopedTypeVariables #-}
 > {-# LANGUAGE OverlappingInstances #-}
 > {-# LANGUAGE FunctionalDependencies #-}
+> {-# LANGUAGE UndecidableInstances #-}
 
 > module Ypnos.Core.Combinators where
 
 > import Ypnos.Core.Grid
+> import Ypnos.Core.Dimensions
+> import Ypnos.Core.Boundary
+> import Ypnos.Core.Types
+> import Ypnos.Core.Dimensions
 
 > import Data.Array.IArray
 > import Data.Array.Unboxed
@@ -163,6 +168,20 @@ OLD form
 >                 extent' = add extent (typeToIntIx $ getUpperIx boundaries)
 >                 xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
 >                 arr = array (origin', dec extent') (es++xs')
+
+> gridZip :: (IArray UArray x, IArray UArray y, IArray UArray (x, y), Dimension d) => 
+>            Grid d b dyn x -> Grid d b dyn y -> Grid d b dyn (x, y)
+> gridZip (Grid arr d c (l, u) b) (Grid arr' _ c' (l', u') b') 
+>     | (l /= l') || (u /= u') = error "Can only zip grids of the same size"
+>     | c /= c'                = error "Can only zip grids with the same cursor"
+>     | otherwise              = let arr'' = array (l, u) (map (\((i,x),(i',y)) -> (i, (x, y))) (zip (assocs arr) (assocs arr')))
+>                                    b'' = undefined
+>                                in (Grid arr'' d c (l, u) b'')
+
+
+ boundaryZip NilB NilB = NilB
+ boundaryZip :: BoundaryList b dyn lower upper d x -> BoundaryList b' dyn lower upper d y ->
+                BoundaryList b dyn lower upper d (x, y)
 
 
 > -- Run stencil computations

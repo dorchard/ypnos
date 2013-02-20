@@ -57,9 +57,8 @@ runAvg xs = I.run (stencil avg Mirror acc_xs)
 
 avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
 avgY = [funCUDA| X*Y:|a  b c|
-                 |d @e f|
-                 |g  h i| 
-        -> (a + b + c + d + e + f + g + h + i)/9|]
+                     |d @e f|
+                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
 runAvgY xs = runG (Sten avgY) xs
@@ -79,10 +78,9 @@ mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
 zeroBound = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
 
-avgY' = [safeFun| X*Y:|a  b c|
-                      |d @e f|
-                      |g  h i| 
-        -> (a + b + c + d + e + f + g + h + i)/9|]
+avgY' = [funCPU| X*Y:|a  b c|
+                     |d @e f|
+                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
 runAvgY' xs (x, y) = gridData $ run avgY' xs'
