@@ -29,7 +29,8 @@ library
                     array ==0.4.*, 
                     directory ==1.2.*, 
                     haskell-src-meta, 
-                    parsec
+                    parsec,
+                    ghc-prim
 
 test-suite tests
   type:	            exitcode-stdio-1.0
