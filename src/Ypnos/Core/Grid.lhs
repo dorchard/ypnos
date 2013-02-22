@@ -94,7 +94,7 @@ Boundaries functions
 
 > data BoundaryListP b d a where
 >     NilBP :: BoundaryListP Nil d a 
->     ConsBP :: BoundaryFun d ix a dyn 
+>     (:::) :: BoundaryFun d ix a dyn 
 >               -> BoundaryListP b d a 
 >               -> BoundaryListP (Cons (ix, dyn) b) d a
 
@@ -242,12 +242,12 @@ Boundary zipping
 
 > instance (Functor (Grid d Nil Static), BMatch xs ys zs d, BFunZip dyn) =>
 >          BMatch (Cons (x, dyn) xs) (Cons (x, dyn) ys) (Cons (x, dyn) zs) d where
->     bmatch (ConsBP x xs) (ConsBP y ys) = ConsBP (bfun x y) (bmatch xs ys)
+>     bmatch (x ::: xs) (y ::: ys) = (bfun x y) ::: (bmatch xs ys)
                                                             
 > instance (BMatch' x dyn ys ys', BMatch xs (Cons y ys') zs d, BFunZip dyn, Functor (Grid d Nil Static)) =>
 >          BMatch (Cons (x, dyn) xs) (Cons y ys) (Cons (x, dyn) zs) d where
->     bmatch (ConsBP x xs) (ConsBP y ys) =  let (y', ys') = bmatch' x ys
->                                           in ConsBP y' (bmatch xs (ConsBP y ys'))
+>     bmatch (x ::: xs) (y ::: ys) =  let (y', ys') = bmatch' x ys
+>                                     in y' ::: (bmatch xs (y ::: ys'))
                   
 
 > class BMatch' ix dyn b rb | ix dyn b -> rb where
@@ -256,9 +256,9 @@ Boundary zipping
 >                (BoundaryFun d ix (x, y) dyn, BoundaryListP rb d y)
 
 > instance BMatch' ix dyn (Cons (ix, dyn) xs) xs where
->     bmatch' f (ConsBP x xs) = (bfun f x, xs)
+>     bmatch' f (x ::: xs) = (bfun f x, xs)
 
 > instance (BMatch' ix dyn ys ys') => BMatch' ix dyn (Cons y ys) (Cons y ys') where
->     bmatch' f (ConsBP y ys) = let (a, ys') = bmatch' f ys
->                               in (a, ConsBP y ys')
+>     bmatch' f (y ::: ys) = let (a, ys') = bmatch' f ys
+>                            in (a, y ::: ys')
  

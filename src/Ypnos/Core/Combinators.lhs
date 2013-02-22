@@ -23,6 +23,7 @@
 > import Data.Array.Base
 > import qualified GHC.Arr as GHCArr
 
+> import Data.Monoid
 > import Data.List
 
 > import Debug.Trace
@@ -164,6 +165,20 @@ OLD form
 
 
 > -- Run stencil computations
+
+> data Reduce r x = Reduce r x
+
+> runReduceSimple :: (IArray UArray y, Dimension d, Monoid r) =>
+>                    (Grid d b dyn x -> Reduce r y)
+>                 -> Grid d b dyn x
+>                 -> Reduce r (Grid d Nil Static y)
+> runReduceSimple f (Grid arr d c (b1, b2) bndrs) = 
+>          let g = (\(Reduce r as) -> \c' -> let Reduce r' x = f (Grid arr d c' (b1, b2) bndrs)
+>                                            in Reduce (mappend r r') ((c', x):as))
+>              (Reduce r dats'') = foldl g (Reduce mempty []) (range (b1, b2))
+>              arr' = array (b1, b2) dats''
+>          in Reduce r (Grid arr' d c (b1, b2) NilB)
+> 
 
 > run :: (IArray UArray y, Dimension d) => (Grid d b dyn x -> y) -> Grid d b dyn x -> Grid d Nil Static y
 > run f (Grid arr d c (b1, b2) boundaries) =
