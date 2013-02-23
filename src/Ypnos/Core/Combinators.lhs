@@ -8,7 +8,6 @@
 > {-# LANGUAGE ScopedTypeVariables #-}
 > {-# LANGUAGE OverlappingInstances #-}
 > {-# LANGUAGE FunctionalDependencies #-}
-> {-# LANGUAGE UndecidableInstances #-}
 > {-# LANGUAGE ConstraintKinds #-}
 
 > module Ypnos.Core.Combinators where
@@ -32,12 +31,30 @@
 
 Ypnos classes.
 
+> class (GridC g) => RunGrid g arr | g -> arr where
+>     type RunCon g arr x y :: Constraint
+>     runG :: RunCon g arr x y => 
+>             (g x `arr` y) 
+>             -> g x -> g y
 
-> class RunGrid g arr where
->     type RunCon g arr d b b' dyn dyn' x y :: Constraint
->     runG :: RunCon g arr d b b' dyn dyn' x y => 
->             (g d b dyn x `arr` y) 
->             -> g d b dyn x -> g d b' dyn' y
+> instance (Dimension d) => GridC (Grid d b dyn) where 
+>    type Const (Grid d b dyn) a = (IArray UArray a)
+>    indexC = indexC'
+
+> instance (DimIdentifier x) => Grid1D (Grid (Dim x) b dyn) b where
+>    index1D = index1D'
+>    unsafeIndex1D = unsafeIndex1D'
+
+ instance (DimIdentifier x, DimIdentifier y) 
+           => GridC2D (Grid (Dim x :* Dim y) b dyn) where 
+    type Const (Grid (Dim x :* Dim y) b dyn) a = (IArray UArray a)
+    type OrC (Grid (Dim x :* Dim y) b dyn) n n' n'' = Safe (IntT n, IntT n') b
+    type I (Grid (Dim x :* Dim y) b dyn) = (Int, Int) 
+    type Or (Grid (Dim x :* Dim y) b dyn) n n' n'' = (IntT n, IntT n')
+    indexCur = indexC
+    indexXD = index2D
+    unsafeIndexXD = unsafeIndex2D
+
 
 > class ReduceGrid grid where   
 >     data Fun1 a b 
@@ -53,12 +70,9 @@ Ypnos classes.
 > 
 > mkReducer = Reducer
 
-> instance RunGrid Grid (->) where
->     type RunCon Grid (->) d b b' dyn dyn' x y = (b' ~ Nil, 
->                                        dyn' ~ Static, 
->                                        Dimension d, 
->                                        IArray UArray y)
->     runG = run
+> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) => RunGrid (Grid d b dyn) (->) where
+>     type RunCon (Grid d b dyn) (->) x y = (IArray UArray y, x ~ y)
+>     runG = runA
 
 > -- Indexing
 
@@ -69,9 +83,9 @@ The following is desugared from !!! inside a boundary macro
 
 Hidden by grid patterns
 
-> {-# INLINE index1D #-}
-> index1D :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Int -> Grid (Dim d) b dyn a -> a
-> index1D _ n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
+> {-# INLINE index1D' #-}
+> index1D' :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Int -> Grid (Dim d) b dyn a -> a
+> index1D' _ n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
 
 OLD form
 
@@ -95,9 +109,9 @@ OLD form
 > unsafeIndex2D :: (IArray UArray a) => (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
 > unsafeIndex2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
 
-> {-# INLINE unsafeIndex1D #-}
-> unsafeIndex1D :: (IArray UArray a) => Int -> Grid (Dim d) b dyn a -> a
-> unsafeIndex1D n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
+> {-# INLINE unsafeIndex1D' #-}
+> unsafeIndex1D' :: (IArray UArray a) => Int -> Grid (Dim d) b dyn a -> a
+> unsafeIndex1D' n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
 
  class RelativeIndex i d where
      index :: (Safe i b, IArray UArray a) => i -> Grid d b dyn a -> a
@@ -108,8 +122,8 @@ OLD form
  instance RelativeIndex (IntT n, IntT n', IntT n'') (Dim d :* (Dim d' :* Dim d'')) where
      index = index3D
 
-> indexC :: (Dimension d, IArray UArray a) => Grid d b dyn a -> a
-> indexC (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
+> indexC' :: (Dimension d, IArray UArray a) => Grid d b dyn a -> a
+> indexC' (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
 
 > (!!!) :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> Index d -> a
 > (Grid arr _ _ _ _) !!! i = arr!i

@@ -28,7 +28,7 @@ import Control.Monad
 
 comb_tests = testGroup "Ypnos.CUDA.Expr.Combinators"
     [ testProperty "Reduce" prop_reduce
-    , testProperty "Run against accelerate" prop_run
+    --, testProperty "Run against accelerate" prop_run
     --, testProperty "Run against original Ypnos" prop_run2
     ]
 
@@ -55,13 +55,13 @@ runAvg :: (IsFloating a, Elt a) =>
 runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
-avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
-avgY = [funCUDA| X*Y:|a  b c|
+{-{-avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a-}
+avgY = [funCPU| X*Y:|a  b c|
                      |d @e f|
                      |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
-runAvgY xs = runG (Sten avgY) xs
+runAvgY xs = runG (Arr avgY) xs-}
 
 gx g = fst (size g) 
 gy g = snd (size g)
@@ -83,7 +83,7 @@ avgY' = [funCPU| X*Y:|a  b c|
                      |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
-runAvgY' xs (x, y) = gridData $ run avgY' xs'
+runAvgY' xs (x, y) = gridData $ runG avgY' xs'
     where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
     -- TODO: this should eventually use mirror.
 
@@ -99,5 +99,5 @@ runner :: ([Float] -> (Int,Int) -> [Float])
 runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 ==>
     run1 xs (x,y) == run2 xs (x,y)
 
-prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)
-prop_run2 = runner (runAvgY') (raiseToList runAvgY)
+{-prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)-}
+{-prop_run2 = runner (runAvgY') (raiseToList runAvgY)-}

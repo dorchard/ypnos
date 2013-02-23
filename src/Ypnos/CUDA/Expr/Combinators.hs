@@ -1,12 +1,14 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE EmptyDataDecls #-}
 
-module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), Sten(..)) where
+module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), Arr(..)) where
 
 import Data.Array.Accelerate hiding (flatten) 
 import Data.Array.Accelerate.Interpreter as Acc
@@ -53,13 +55,25 @@ type instance IShape (Dim x :* Dim y) = Z :. Int :. Int
     {-listGrid = undefined-}
     {-gridData = undefined-}
 
-instance (arr ~ Array sh) => RunGrid arr sh where 
-    data Sten sh a b where
-        Sten :: (Shape sh, Stencil sh a sten',
-                 Elt a, Elt b) =>
-                (sten' -> Exp b)
-                -> Sten sh a b
-    runG (Sten f) = Acc.run . (stencil f (Mirror)) . use 
+data Arr x y where
+    Arr :: (x -> Exp y) -> Arr x y
+
+data GPUGrid b sh x
+ 
+fromArray :: Shape sh => Array sh y -> GPUGrid b sh y
+fromArray = undefined
+
+toArray :: Shape sh => GPUGrid b sh y -> Array sh y
+toArray = undefined
+
+instance (Shape sh) => GridC (GPUGrid b sh)
+
+instance (Shape sh) => RunGrid (GPUGrid b sh) Arr where 
+    type RunCon (GPUGrid b sh) Arr x y = (Elt y, Stencil sh x (Stencil3x3 x))
+    runG (Arr f) = fromArray . Acc.run . ((stencil . conv) (f) (Mirror)) . use .toArray
+
+conv :: (Shape sh) => (GPUGrid b sh x -> Exp y) -> (Stencil3x3 x -> Exp y)
+conv = undefined
 
 -- Old, before using type classes
 run :: forall x y d sh sten. 

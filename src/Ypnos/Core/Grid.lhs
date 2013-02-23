@@ -8,6 +8,7 @@
 > {-# LANGUAGE ScopedTypeVariables #-}
 > {-# LANGUAGE OverlappingInstances #-}
 > {-# LANGUAGE FunctionalDependencies #-}
+> {-# LANGUAGE ConstraintKinds #-}
 
 > {-# LANGUAGE UndecidableInstances #-}
 
@@ -22,11 +23,25 @@
 > import Data.Array.Base
 > import qualified GHC.Arr as GHCArr
 
+> import GHC.Prim
+
 > import Data.List
 
 > import Debug.Trace
 
 Grid data type
+
+> class GridC g where 
+>    type Const g a :: Constraint
+>    indexC :: Const g a => g a -> a
+
+> class GridC g => Grid1D g b | g -> b where
+>    index1D :: (Const g a, Safe (IntT n) b) => IntT n -> Int -> g a -> a
+>    unsafeIndex1D :: Const g a => Int -> g a -> a
+
+ class GridC g => Grid2D g where
+    index2D :: (Const g a, OrC g n n' n'') => Or g n n' n'' -> I g -> g a -> a
+    unsafeIndex2D :: Const g a => (Int,Int) -> g a -> a
 
 > data Grid d b dyn a where
 >    Grid :: (UArray (Index d) a) ->                      -- Array of values
