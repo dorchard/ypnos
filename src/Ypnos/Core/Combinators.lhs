@@ -45,6 +45,11 @@ Ypnos classes.
 >    index1D = index1D'
 >    unsafeIndex1D = unsafeIndex1D'
 
+> instance (DimIdentifier x, DimIdentifier y) 
+>           => Grid2D (Grid (Dim x :* Dim y) b dyn) b where 
+>    index2D = index2D'
+>    unsafeIndex2D = unsafeIndex2D'
+
  instance (DimIdentifier x, DimIdentifier y) 
            => GridC2D (Grid (Dim x :* Dim y) b dyn) where 
     type Const (Grid (Dim x :* Dim y) b dyn) a = (IArray UArray a)
@@ -92,9 +97,9 @@ OLD form
  index1D :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Grid (Dim d) b dyn a -> a
  index1D n (Grid arr _ c _ _) = arr!(c + (intTtoInt n))
 
-> {-# INLINE index2D #-}
-> index2D :: (Safe (IntT n, IntT n') b, IArray UArray a) => (IntT n, IntT n') -> (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
-> index2D _ (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
+> {-# INLINE index2D' #-}
+> index2D' :: (Safe (IntT n, IntT n') b, IArray UArray a) => (IntT n, IntT n') -> (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
+> index2D' _ (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
 
 OLD form
 
@@ -105,9 +110,9 @@ OLD form
 > index3D :: (Safe (IntT n, IntT n', IntT n'') b, IArray UArray a) => (IntT n, IntT n', IntT n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) b dyn a -> a
 > index3D (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + intTtoInt n, y + intTtoInt n', z + intTtoInt n'')
 
-> {-# INLINE unsafeIndex2D #-}
-> unsafeIndex2D :: (IArray UArray a) => (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
-> unsafeIndex2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
+> {-# INLINE unsafeIndex2D' #-}
+> unsafeIndex2D' :: (IArray UArray a) => (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
+> unsafeIndex2D' (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
 
 > {-# INLINE unsafeIndex1D' #-}
 > unsafeIndex1D' :: (IArray UArray a) => Int -> Grid (Dim d) b dyn a -> a
