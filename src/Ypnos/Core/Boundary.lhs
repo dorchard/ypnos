@@ -25,13 +25,25 @@
 
 Computes the dynamism of a boundary list
 
-> type family Dynamism t t'
-> type instance Dynamism Static Static = Static
-> type instance Dynamism Static Dynamic = Dynamic
-> type instance Dynamism Dynamic Static = Dynamic
-> type instance Dynamism Dynamic Dynamic = Dynamic
+> type family DynamismP t t'
+> type instance DynamismP Static Static = Static
+> type instance DynamismP Static Dynamic = Dynamic
+> type instance DynamismP Dynamic Static = Dynamic
+> type instance DynamismP Dynamic Dynamic = Dynamic
+
+> type family Dynamism t
+> type instance Dynamism Nil = Static
+> type instance Dynamism (Cons (ix, dyn) ixs) = DynamismP dyn (Dynamism ixs)
+
+ type family Boundaries t
+ type instance Boundaries Nil = Nil
+ type instance Boundaries (Cons (ix, dyn) ixs) = Cons (AbsToReln ix, dyn) (Boundaries ixs)
 
 Maps "absolute" index types to "relative" index types, i.e. Int -> Pos (Zn)
+
+> type family Absify t
+> type instance Absify Nil = Nil
+> type instance Absify (Cons ix ixs) = Cons (AbsToReln ix) (Absify ixs)
 
 > type family AbsToReln t
 > type instance AbsToReln Int = IntT (Pos Zn)
@@ -44,7 +56,7 @@ Maps "absolute" index types to "relative" index types, i.e. Int -> Pos (Zn)
  type instance Append (Cons x xs) ys = Cons x (Append xs ys)
 
  appendBP :: BoundaryListP b d a -> BoundaryListP b' d a -> BoundaryListP (Append b b') d a
- appendBP NilBP y = y
+ appendBP NilB y = y
  appendBP (ConsBP x xs) ys = ConsBP x (appendBP xs ys)
 
 

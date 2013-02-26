@@ -23,14 +23,3 @@ laplace2D = [fun| X*Y:| _  t  _ |
 
 zeroBound = [boundary| Double from (-1, -1) to (+1, +1) -> 0.0 |]
 
-main = do argv <- getArgs
-          if (length argv == 2) then
-             do 
-               (x, y, img) <- read_ppm (argv!!0)
-               let iters = read $ argv!!1
-               let g0 = listGrid (Dim X :* Dim Y) (0, 0) (x, y) img zeroBound
-               let gn = (iterate (runA laplace2D) g0)!!iters
-               let img' = gridData gn
-               write_ppm ((argv!!0)++".ypnos") x y img'
-            else
-                putStrLn "Usage: LaplaceExample input iterations"
