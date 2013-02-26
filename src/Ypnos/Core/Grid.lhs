@@ -29,11 +29,11 @@
 Grid data type
 
 > data Grid d b a where
->    Grid :: (UArray (Index d) a) ->                      -- Array of values
->            Dimensionality d ->                          -- Dimensionality term
->            Index d ->                                   -- Cursor ("current index") 
->            (Index d, Index d) ->                        -- Lower and upper bounds of extent
->            BoundaryList ixs d a ->      -- Boundary information
+>    Grid :: (UArray (Index d) a) ->    -- Array of values
+>            Dimensionality d ->        -- Dimensionality term
+>            Index d ->                 -- Cursor ("current index") 
+>            (Index d, Index d) ->      -- Lower and upper bounds of extent
+>            BoundaryList ixs d a ->     -- Boundary information
 >            Grid d ixs a
 
 > instance (Ix (Index d), IArray UArray a, 
@@ -90,33 +90,6 @@ Boundaries functions
 >     Dynamic :: ((ix, (Grid d Nil a)) -> a) -> BoundaryFun d ix a Dynamic
 
 
-> class (Dimension d) => BoundaryInfo ixs d where
->     lowerIx :: BoundaryList ixs d a -> Index d
->     upperIx :: BoundaryList ixs d a -> Index d
-
-> instance (DimIdentifier d) => BoundaryInfo Nil (Dim d) where
->     lowerIx NilB = 0
->     upperIx NilB = 0
-
-> instance (DimIdentifier d, ReifiableIx ix Int, BoundaryInfo ixs (Dim d))
->        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d) where
->     lowerIx (ConsB _ ixs) = min (lowerIx ixs) (typeToIntIx (undefined :: ix))
->     upperIx (ConsB _ ixs) = max (upperIx ixs) (typeToIntIx (undefined :: ix))
-
-> instance (DimIdentifier d, DimIdentifier d') => BoundaryInfo Nil (Dim d :* Dim d') where
->     lowerIx NilB = (0, 0)
->     upperIx NilB = (0, 0)
-
-> instance (DimIdentifier d, DimIdentifier d', 
->           ReifiableIx ix (Int, Int), BoundaryInfo ixs (Dim d :* Dim d'))
->        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d :* Dim d') where
->     lowerIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
->                                 (x', y') = lowerIx ixs
->                              in (x `min` x', y `min` y')
->     upperIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
->                                 (x', y') = upperIx ixs
->                              in (x `max` x', y `max` y')
->                                  
 
 Computes the values of a boundary region, given a boundary list
 
@@ -276,3 +249,33 @@ Boundary zipping
 >     bzip' f (ConsB y ys) = let (a, ys') = bzip' f ys
 >                            in (a, ConsB y ys')
  
+
+Computes information on boundaries
+
+> class (Dimension d) => BoundaryInfo ixs d where
+>     lowerIx :: BoundaryList ixs d a -> Index d
+>     upperIx :: BoundaryList ixs d a -> Index d
+
+> instance (DimIdentifier d) => BoundaryInfo Nil (Dim d) where
+>     lowerIx NilB = 0
+>     upperIx NilB = 0
+
+> instance (DimIdentifier d, ReifiableIx ix Int, BoundaryInfo ixs (Dim d))
+>        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d) where
+>     lowerIx (ConsB _ ixs) = min (lowerIx ixs) (typeToIntIx (undefined :: ix))
+>     upperIx (ConsB _ ixs) = max (upperIx ixs) (typeToIntIx (undefined :: ix))
+
+> instance (DimIdentifier d, DimIdentifier d') => BoundaryInfo Nil (Dim d :* Dim d') where
+>     lowerIx NilB = (0, 0)
+>     upperIx NilB = (0, 0)
+
+> instance (DimIdentifier d, DimIdentifier d', 
+>           ReifiableIx ix (Int, Int), BoundaryInfo ixs (Dim d :* Dim d'))
+>        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d :* Dim d') where
+>     lowerIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
+>                                 (x', y') = lowerIx ixs
+>                              in (x `min` x', y `min` y')
+>     upperIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
+>                                 (x', y') = upperIx ixs
+>                              in (x `max` x', y `max` y')
+>                                  
