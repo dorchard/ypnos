@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 module Testing.Ypnos.Sten where
 
@@ -45,3 +46,18 @@ avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
 avgY = [funCUDA| X*Y:|a  b c|
                       |d @e f|
                       |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
+count = length . filter id
+
+-- Game of Life
+
+life = [funCPU| X*Y:| a  b  c |
+                    | d @e  f |
+                    | g  h  i | ->
+                      let n = count [a, b, c, d, f, g, h, i] in
+                        (n == 3) || (1 < n && n < 4 && e) |]
+
+zeroBound = [boundary| Bool from (-1, -1) to (+1, +1) -> False |]
+
+runLife :: [Bool] -> (Int,Int) -> [Bool]
+runLife xs (x, y) = gridData $ run life xs'
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) zeroBound
