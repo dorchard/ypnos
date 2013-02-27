@@ -35,21 +35,17 @@ Computes the dynamism of a boundary list
 > type instance Dynamism Nil = Static
 > type instance Dynamism (Cons (ix, dyn) ixs) = DynamismP dyn (Dynamism ixs)
 
- type family Boundaries t
- type instance Boundaries Nil = Nil
- type instance Boundaries (Cons (ix, dyn) ixs) = Cons (AbsToReln ix, dyn) (Boundaries ixs)
-
 Maps "absolute" index types to "relative" index types, i.e. Int -> Pos (Zn)
-
-> type family Absify t
-> type instance Absify Nil = Nil
-> type instance Absify (Cons ix ixs) = Cons (AbsToReln ix) (Absify ixs)
 
 > type family AbsToReln t
 > type instance AbsToReln Int = IntT (Pos Zn)
 > type instance AbsToReln (IntT n) = IntT n
 > type instance AbsToReln (a, b) = (AbsToReln a, AbsToReln b)
 > type instance AbsToReln (a, b, c) = (AbsToReln a, AbsToReln b, AbsToReln c)
+
+> type family Absify t
+> type instance Absify Nil = Nil
+> type instance Absify (Cons ix ixs) = Cons (AbsToReln ix) (Absify ixs)
 
  type family Append l l'
  type instance Append Nil ys = ys

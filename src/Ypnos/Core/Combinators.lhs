@@ -28,7 +28,7 @@
 
 > import Debug.Trace
 
-> -- Indexing
+Indexing
 
 The following is desugared from !!! inside a boundary macro
 
@@ -85,7 +85,7 @@ OLD form
 > ix :: (IArray UArray a, Ix (Index d)) => Grid d b a -> Index d -> a
 > ix = (!!!)
 
-> -- Deconstructor
+Grid deconstructors
 
 > gridData :: (Dimension d, PointwiseOrd (Index d), IArray UArray a) => Grid d b a -> [a]
 > gridData (Grid arr _ _ (origin, extent) _) = 
@@ -105,7 +105,7 @@ OLD form
 >     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
 
 
-> -- Constructors
+Grid constructors
 
 > listGridNoBoundary :: (IArray UArray a, Dimension d) => Dimensionality d -> Index d -> Index d -> [a] -> Grid d Nil a
 > listGridNoBoundary d origin extent xs = Grid arr d origin (origin, (dec extent)) NilB
@@ -144,10 +144,10 @@ OLD form
 >                 xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
 >                 arr = array (origin', dec extent') (es++xs')
 
-> -- Zip grids together
+Ziping and unzipping grids
 
 > gridZip :: (IArray UArray x, IArray UArray y, IArray UArray (x, y), 
->             Bzip b b' b'' d,
+>             BZip b b' b'' d,
 >             Dimension d) => 
 >            Grid d b x -> Grid d b' y -> Grid d b'' (x, y)
 > gridZip (Grid arr d c (l, u) b) (Grid arr' _ c' (l', u') b') 
@@ -157,7 +157,14 @@ OLD form
 >                                    b'' = bzip b b' 
 >                                in (Grid arr'' d c (l, u) b'')
 
-> -- Run stencil computations
+> gridUnzip :: (BUnzip b, Functor (Grid d Nil), Ix (Index d),
+>               IArray UArray x, IArray UArray y, IArray UArray (x, y)) =>
+>              Grid d b (x, y) -> (Grid d b x, Grid d b y)
+> gridUnzip (Grid arr d c (l, u) b) = 
+>     let (b', b'') = bUnzip b
+>     in (Grid (amap fst arr) d c (l, u) b', Grid (amap snd arr) d c (l, u) b'')
+
+Run stencil computations
 
 > data Reduce r x = Reduce r x
 
