@@ -3,13 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 
-module Testing.Ypnos.Sten where
-
-import Test.Framework (testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck
-
-import Data.List
+module Ypnos.Examples.Stencils where
 
 import Ypnos
 import Ypnos.CUDA

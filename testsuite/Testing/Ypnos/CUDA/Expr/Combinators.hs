@@ -19,7 +19,7 @@ import Ypnos
 import Ypnos.CUDA
 import Ypnos.Core.Grid
 
-import Testing.Ypnos.Sten
+import Ypnos.Examples.Stencils
 
 import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I

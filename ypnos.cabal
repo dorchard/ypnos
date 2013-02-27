@@ -20,7 +20,7 @@ library
                     Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, 
                     Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
                     Ypnos.Core.Combinators, Ypnos.Core.Types, Ypnos.Core.Dimensions
-                    Ypnos.Core.Boundary
+                    Ypnos.Core.Boundary, Ypnos.Examples.Stencils
   hs-source-dirs:   src
   build-depends:    base ==4.*, 
                     accelerate ==0.12.*,

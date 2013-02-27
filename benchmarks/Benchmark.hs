@@ -1,5 +1,7 @@
-import Testing.Ypnos.CUDA.Expr.Combinators 
-    (runAvgY, runAvg, runAvgY', raiseToList)
+module Benchmark
+
+import Ypnos.Examples.Stencils (runAvgY, runAvg, runAvgY', raiseToList)
+
 import Criterion
 import Criterion.Monad
 import Criterion.Analysis
@@ -24,12 +26,12 @@ stenBench f = [ bench "10x10" $ whnf f (10,10)
 
 --main = defaultMain [ bgroup "Ypnos" (stenBench runAvgY')
 --                   , bgroup "Accelerate" (stenBench runAvgA')
---                   ] 
+--                   ]
 runB :: ((Int,Int) -> b) -> Int -> IO Double
 runB f x = let v = do env <- measureEnvironment
                       l <- runBenchmark env (whnf f (x,x))
                       s <- liftIO $ analyseSample 0.5 l 5
-                      m <- analyseMean l 5 
+                      m <- analyseMean l 5
                       return m
 
          in  withConfig defaultConfig v
