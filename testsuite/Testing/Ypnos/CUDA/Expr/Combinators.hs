@@ -15,9 +15,11 @@ import Test.QuickCheck
 
 import Data.List
 
-import Ypnos 
+import Ypnos
 import Ypnos.CUDA
 import Ypnos.Core.Grid
+
+import Testing.Ypnos.Sten
 
 import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
@@ -40,30 +42,20 @@ upper l = all (\ x -> x < l)
 lower l = all (\ x -> x >= l)
 
 prop_reduce :: [Int] -> Int -> Int -> Gen Prop
-prop_reduce xs x y =  bounded 50 x y && (length xs) > 0 ==> 
+prop_reduce xs x y =  bounded 50 x y && (length xs) > 0 ==>
     red (+) 0 arr == (reduceG reducer arr)
-    where reducer = mkReducer (Fun2A (+)) (Fun2A (+)) 0 (Fun1A id) 
+    where reducer = mkReducer (Fun2A (+)) (Fun2A (+)) 0 (Fun1A id)
           arr = fromList (Z :. x :. y) (cycle xs)
 
-avg :: Floating (Exp a) => Stencil3x3 a -> Exp a
-avg ((a, b, c),
-     (d, e, f),
-     (g, h, i)) = (a + b + c + d + e + f + g + h + i)/9
-
-runAvg :: (IsFloating a, Elt a) => 
+runAvg :: (IsFloating a, Elt a) =>
           (Array DIM2 a) -> (Array DIM2 a)
 runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
-{-{-avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a-}
-avgY = [funCPU| X*Y:|a  b c|
-                     |d @e f|
-                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
-
 runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
 runAvgY xs = runG (Arr avgY) xs-}
 
-gx g = fst (size g) 
+gx g = fst (size g)
 gy g = snd (size g)
 
 mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
@@ -78,16 +70,11 @@ mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
 zeroBound = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
 
-avgY' = [funCPU| X*Y:|a  b c|
-                     |d @e f|
-                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
-
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
 runAvgY' xs (x, y) = gridData $ runG avgY' xs'
     where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
-    -- TODO: this should eventually use mirror.
 
-raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float)) 
+raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float))
             -> [Float] -> (Int,Int) -> [Float]
 raiseToList f xs (x,y) = toList $ f arr
     where arr = fromList (Z :. x :. y) xs'
@@ -101,3 +88,4 @@ runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 
 
 {-prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)-}
 {-prop_run2 = runner (runAvgY') (raiseToList runAvgY)-}
+            --must discount boundaries to make this work
