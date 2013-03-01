@@ -1,5 +1,9 @@
-import Testing.Ypnos.CUDA.Expr.Combinators 
-    (runAvgY, runAvg, runAvgY', raiseToList)
+module Benchmark where
+
+import System.Environment
+
+import Ypnos.Examples.Stencils (runAvgY, runAvg, runAvgY', raiseToList)
+
 import Criterion
 import Criterion.Monad
 import Criterion.Analysis
@@ -24,21 +28,20 @@ stenBench f = [ bench "10x10" $ whnf f (10,10)
 
 --main = defaultMain [ bgroup "Ypnos" (stenBench runAvgY')
 --                   , bgroup "Accelerate" (stenBench runAvgA')
---                   ] 
+--                   ]
 runB :: ((Int,Int) -> b) -> Int -> IO Double
 runB f x = let v = do env <- measureEnvironment
                       l <- runBenchmark env (whnf f (x,x))
                       s <- liftIO $ analyseSample 0.5 l 5
-                      m <- analyseMean l 5 
+                      m <- analyseMean l 5
                       return m
 
          in  withConfig defaultConfig v
 
-makeSet :: (Monad m, Show a) => (Int -> m a) -> m [[String]]
-makeSet f = let l = [2, 20..100]
-                tup x = do y <- f x
-                           return [show x,show y]
-            in  mapM tup l
+makeSet :: (Monad m, Show a) => (Int -> m a) -> [Int] -> m [[String]]
+makeSet f range = let tup x = do y <- f x
+                                 return [show x,show y]
+                  in  mapM tup range
 
 insert i x y = x ++ i ++ y
 
@@ -48,12 +51,17 @@ makeLine xs = foldr1 (insert ", ") xs
 printCSV :: [[String]] -> String
 printCSV lls = foldr (insert "\n") "" (map makeLine lls)
 
-main = do a <- makeSet (runB avgY)
-          b <- makeSet (runB avgA)
-          c <- makeSet (runB avgYorig)
+main = do [function, impl, begin, step, end, filename] <- getArgs
+          let fun = case function of
+                      "avg" -> case impl of
+                                 "gpu" -> avgY
+                                 "cpu" -> avgYorig
+                                 _ -> error ("Not a know implementation.")
+                      _ -> error ("Not a know function.")
+          let b = read begin :: Int
+          let s = read step :: Int
+          let e = read end :: Int
+
+          a <- makeSet (runB fun) ([b, s.. e])
           let ca = printCSV a
-          let cb = printCSV b
-          let cc = printCSV c
-          writeFile "ypnos.csv" ca
-          writeFile "accelerate.csv" cb
-          writeFile "ypnos_orig.csv" cc
+          writeFile filename ca

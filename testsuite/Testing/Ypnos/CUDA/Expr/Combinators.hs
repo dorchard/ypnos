@@ -19,7 +19,7 @@ import Ypnos
 import Ypnos.CUDA
 import Ypnos.Core.Grid
 
-import Testing.Ypnos.Sten
+import Ypnos.Examples.Stencils
 
 import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
@@ -30,8 +30,8 @@ import Control.Monad
 
 comb_tests = testGroup "Ypnos.CUDA.Expr.Combinators"
     [ testProperty "Reduce" prop_reduce
-    --, testProperty "Run against accelerate" prop_run
-    --, testProperty "Run against original Ypnos" prop_run2
+    , testProperty "Run against accelerate" prop_run
+--    , testProperty "Run against original Ypnos" prop_run2
     ]
 
 red :: Shape sh => (a -> a -> a) -> a -> Array sh a -> a
@@ -47,45 +47,12 @@ prop_reduce xs x y =  bounded 50 x y && (length xs) > 0 ==>
     where reducer = mkReducer (Fun2A (+)) (Fun2A (+)) 0 (Fun1A id)
           arr = fromList (Z :. x :. y) (cycle xs)
 
-runAvg :: (IsFloating a, Elt a) =>
-          (Array DIM2 a) -> (Array DIM2 a)
-runAvg xs = I.run (stencil avg Mirror acc_xs)
-    where acc_xs = use xs
-
-runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
-runAvgY xs = runG (Arr avgY) xs-}
-
-gx g = fst (size g)
-gy g = snd (size g)
-
-mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
-                          (-1, *j) g -> g!!!(0, j) -- left
-                          (+1, *j) g -> g!!!(gx g, j) -- right
-                          (*i, +1) g -> g!!!(i, gy g)
-                          (-1, -1) g -> g!!!(0, 0) -- top corners
-                          (+1, -1) g -> g!!!(gx g, 0) -- top corners
-                          (-1, +1) g -> g!!!(0, gy g) -- top corners
-                          (+1, +1) g -> g!!!(gx g, gy g) |]
-
-zeroBound = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
-
-
-runAvgY' :: [Float] -> (Int,Int) -> [Float]
-runAvgY' xs (x, y) = gridData $ runG avgY' xs'
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
-
-raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float))
-            -> [Float] -> (Int,Int) -> [Float]
-raiseToList f xs (x,y) = toList $ f arr
-    where arr = fromList (Z :. x :. y) xs'
-          xs' = cycle xs
-
 runner :: ([Float] -> (Int,Int) -> [Float])
        -> ([Float] -> (Int,Int) -> [Float])
        -> [Float] -> (Int,Int) -> Gen Prop
 runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 ==>
     run1 xs (x,y) == run2 xs (x,y)
 
-{-prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)-}
-{-prop_run2 = runner (runAvgY') (raiseToList runAvgY)-}
+prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)
+prop_run2 = runner (runAvgY') (raiseToList runAvgY)
             --must discount boundaries to make this work
