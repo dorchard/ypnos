@@ -31,7 +31,7 @@
 
 Grid data type
 
-> class GridC g where 
+> class GridC g where
 >    type Const g a :: Constraint
 >    indexC :: Const g a => g a -> a
 
@@ -40,19 +40,19 @@ Grid data type
 >    unsafeIndex1D :: Const g a => Int -> g a -> a
 
 > class GridC g => Grid2D g b | g -> b where
->    index2D :: (Const g a, Safe (IntT n, IntT n') b) 
+>    index2D :: (Const g a, Safe (IntT n, IntT n') b)
 >                => (IntT n, IntT n') -> (Int, Int) -> g a -> a
 >    unsafeIndex2D :: Const g a => (Int, Int) -> g a -> a
 
 > data Grid d b dyn a where
 >    Grid :: (UArray (Index d) a) ->                      -- Array of values
 >            Dimensionality d ->                          -- Dimensionality term
->            Index d ->                                   -- Cursor ("current index") 
+>            Index d ->                                   -- Cursor ("current index")
 >            (Index d, Index d) ->                        -- Lower and upper bounds of extent
 >            BoundaryList ixs dyn lower upper d a ->      -- Boundary information
 >            Grid d ixs dyn a
 
-> instance (Ix (Index d), IArray UArray a, 
+> instance (Ix (Index d), IArray UArray a,
 >           Show (Index d), Show a) => Show (Grid d b dyn a) where
 >     show (Grid arr d c (b1, b2) _) =
 >           (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
@@ -60,18 +60,18 @@ Grid data type
 Constraints for enforcing safe indexing
 
 > class Safe i b
- 
- 
+
+
 1D Safety
 
-> instance Safe (IntT (Pos Zn)) b 
+> instance Safe (IntT (Pos Zn)) b
 
 > instance (Safe (IntT (Pred n)) b,
->           InBoundary (IntT n) b) => Safe (IntT n) b 
+>           InBoundary (IntT n) b) => Safe (IntT n) b
 
 2D Safety
 
-> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) b 
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) b
 
 > instance (Safe (IntT (Pred n), IntT n') b,
 >           Safe (IntT n, IntT (Pred n')) b,
@@ -84,7 +84,7 @@ Constraints for enforcing safe indexing
 > instance (Safe (IntT (Pred n), IntT n', IntT n'') b,
 >           Safe (IntT n, IntT (Pred n'), IntT n'') b,
 >           Safe (IntT n, IntT n', IntT (Pred n'')) b,
->           InBoundary (IntT n, IntT n', IntT n'') b) => Safe (IntT n, IntT n', IntT n'') b  
+>           InBoundary (IntT n, IntT n', IntT n'') b) => Safe (IntT n, IntT n', IntT n'') b
 
 > class InBoundary i ixs
 > instance InBoundary i (Cons i ixs)                    -- Head matches
@@ -94,10 +94,10 @@ Boundary lists, important for defining a grid
 
 > data BoundaryList b dyn lower upper d a where
 >     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
->     ConsB :: BuildBoundary d ix dyn => 
+>     ConsB :: BuildBoundary d ix dyn =>
 >              BoundaryFun d ix a dyn
->               -> BoundaryList b dyn' lower upper d a 
->               -> BoundaryList (Cons (AbsToReln ix) b) (Dynamism dyn dyn') 
+>               -> BoundaryList b dyn' lower upper d a
+>               -> BoundaryList (Cons (AbsToReln ix) b) (Dynamism dyn dyn')
 >                      (Lower (AbsToReln ix) lower) (Upper (AbsToReln ix) upper) d a
 
 Boundaries functions
@@ -109,9 +109,9 @@ Boundaries functions
 "Plain" boundary lists (less type-level information, easier for manipulating)
 
 > data BoundaryListP b d a where
->     NilBP :: BoundaryListP Nil d a 
->     ConsBP :: BoundaryFun d ix a dyn 
->               -> BoundaryListP b d a 
+>     NilBP :: BoundaryListP Nil d a
+>     ConsBP :: BoundaryFun d ix a dyn
+>               -> BoundaryListP b d a
 >               -> BoundaryListP (Cons (ix, dyn) b) d a
 
 Computes the values of a boundary region, given a boundary list
@@ -152,28 +152,28 @@ Generate boundary indices from boundary definitions
 >                           else (x0+x)
 >         in
 >             [(x' , f (typeToSymIx (undefined::(IntT n))))]
-     
+
 > instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
 >          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Dynamic where
->     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid = 
->         let 
+>     buildBoundary d (Dynamic f) ((x0, y0), (xn, yn)) grid =
+>         let
 >             x = typeToIntIx (undefined::(IntT n))
 >             y = typeToIntIx (undefined::(IntT m))
->             x' = if (x>0) then (x+xn) 
+>             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
 >          in
->             [((x', y'), f ((typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))), grid))] 
+>             [((x', y'), f ((typeToSymIx (undefined::(IntT n)), typeToSymIx (undefined::(IntT m))), grid))]
 
 
 > instance (ReifiableIx (IntT n) Int, ReifiableIx (IntT m) Int) =>
 >          BuildBoundary ((Dim d) :* (Dim d')) (IntT n, IntT m) Static where
->     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid = 
->         let 
+>     buildBoundary d (Static f) ((x0, y0), (xn, yn)) grid =
+>         let
 >             x = typeToIntIx (undefined::(IntT n))
 >             y = typeToIntIx (undefined::(IntT m))
->             x' = if (x>0) then (x+xn) 
+>             x' = if (x>0) then (x+xn)
 >                           else (x0+x)
 >             y' = if (y>0) then (y+yn)
 >                           else (y0+y)
@@ -227,8 +227,8 @@ Generate boundary indices from boundary definitions
 Zips together two boundary functions
 
 > class BFunZip dyn where
->     bfun :: (Functor (Grid d Nil Static)) => 
->             BoundaryFun d ix a dyn -> BoundaryFun d ix b dyn -> BoundaryFun d ix (a, b) dyn 
+>     bfun :: (Functor (Grid d Nil Static)) =>
+>             BoundaryFun d ix a dyn -> BoundaryFun d ix b dyn -> BoundaryFun d ix (a, b) dyn
 
 > instance BFunZip Static where
 >     bfun (Static x) (Static y) = Static (\i -> (x i, y i))
@@ -249,7 +249,7 @@ Boundary zipping
                                 in (a, z : zs')
 
 > class BMatch b b' rb d | b b' -> rb where
->     bmatch :: BoundaryListP b d x -> 
+>     bmatch :: BoundaryListP b d x ->
 >               BoundaryListP b' d y ->
 >               BoundaryListP rb d (x, y)
 
@@ -259,16 +259,16 @@ Boundary zipping
 > instance (Functor (Grid d Nil Static), BMatch xs ys zs d, BFunZip dyn) =>
 >          BMatch (Cons (x, dyn) xs) (Cons (x, dyn) ys) (Cons (x, dyn) zs) d where
 >     bmatch (ConsBP x xs) (ConsBP y ys) = ConsBP (bfun x y) (bmatch xs ys)
-                                                            
+
 > instance (BMatch' x dyn ys ys', BMatch xs (Cons y ys') zs d, BFunZip dyn, Functor (Grid d Nil Static)) =>
 >          BMatch (Cons (x, dyn) xs) (Cons y ys) (Cons (x, dyn) zs) d where
 >     bmatch (ConsBP x xs) (ConsBP y ys) =  let (y', ys') = bmatch' x ys
 >                                           in ConsBP y' (bmatch xs (ConsBP y ys'))
-                  
+
 
 > class BMatch' ix dyn b rb | ix dyn b -> rb where
->     bmatch' :: (Functor (Grid d Nil Static), BFunZip dyn) => 
->                BoundaryFun d ix x dyn -> BoundaryListP b d y -> 
+>     bmatch' :: (Functor (Grid d Nil Static), BFunZip dyn) =>
+>                BoundaryFun d ix x dyn -> BoundaryListP b d y ->
 >                (BoundaryFun d ix (x, y) dyn, BoundaryListP rb d y)
 
 > instance BMatch' ix dyn (Cons (ix, dyn) xs) xs where
@@ -277,4 +277,3 @@ Boundary zipping
 > instance (BMatch' ix dyn ys ys') => BMatch' ix dyn (Cons y ys) (Cons y ys') where
 >     bmatch' f (ConsBP y ys) = let (a, ys') = bmatch' f ys
 >                               in (a, ConsBP y ys')
- 

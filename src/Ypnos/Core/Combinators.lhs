@@ -33,11 +33,11 @@ Ypnos classes.
 
 > class (GridC g) => RunGrid g arr | g -> arr where
 >     type RunCon g arr x y :: Constraint
->     runG :: RunCon g arr x y => 
->             (g x `arr` y) 
+>     runG :: RunCon g arr x y =>
+>             (arr g x y)
 >             -> g x -> g y
 
-> instance (Dimension d) => GridC (Grid d b dyn) where 
+> instance (Dimension d) => GridC (Grid d b dyn) where
 >    type Const (Grid d b dyn) a = (IArray UArray a)
 >    indexC = indexC'
 
@@ -45,39 +45,42 @@ Ypnos classes.
 >    index1D = index1D'
 >    unsafeIndex1D = unsafeIndex1D'
 
-> instance (DimIdentifier x, DimIdentifier y) 
->           => Grid2D (Grid (Dim x :* Dim y) b dyn) b where 
+> instance (DimIdentifier x, DimIdentifier y)
+>           => Grid2D (Grid (Dim x :* Dim y) b dyn) b where
 >    index2D = index2D'
 >    unsafeIndex2D = unsafeIndex2D'
 
- instance (DimIdentifier x, DimIdentifier y) 
-           => GridC2D (Grid (Dim x :* Dim y) b dyn) where 
+ instance (DimIdentifier x, DimIdentifier y)
+           => GridC2D (Grid (Dim x :* Dim y) b dyn) where
     type Const (Grid (Dim x :* Dim y) b dyn) a = (IArray UArray a)
     type OrC (Grid (Dim x :* Dim y) b dyn) n n' n'' = Safe (IntT n, IntT n') b
-    type I (Grid (Dim x :* Dim y) b dyn) = (Int, Int) 
+    type I (Grid (Dim x :* Dim y) b dyn) = (Int, Int)
     type Or (Grid (Dim x :* Dim y) b dyn) n n' n'' = (IntT n, IntT n')
     indexCur = indexC
     indexXD = index2D
     unsafeIndexXD = unsafeIndex2D
 
 
-> class ReduceGrid grid where   
->     data Fun1 a b 
->     data Fun2 a b c 
+> class ReduceGrid grid where
+>     data Fun1 a b
+>     data Fun2 a b c
 >     reduceG :: Reducer a c -> grid a -> c
 
 > data Reducer a c where
->     Reducer ::   (Fun2 a b b) 
->               -> (Fun2 b b b) 
+>     Reducer ::   (Fun2 a b b)
+>               -> (Fun2 b b b)
 >               -> b
 >               -> (Fun1 b c)
 >               -> Reducer a c
-> 
+>
 > mkReducer = Reducer
 
-> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) => RunGrid (Grid d b dyn) (->) where
->     type RunCon (Grid d b dyn) (->) x y = (IArray UArray y, x ~ y)
->     runG = runA
+> data CPUArr g a b where
+>   CPUArr :: (g a -> b) -> CPUArr g a b
+
+> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) => RunGrid (Grid d b dyn) (CPUArr) where
+>     type RunCon (Grid d b dyn) (CPUArr) x y = (IArray UArray y, x ~ y)
+>     runG (CPUArr f) = runA f
 
 > -- Indexing
 
@@ -139,11 +142,11 @@ OLD form
 > -- Deconstructor
 
 > gridData :: (Dimension d, PointwiseOrd (Index d), IArray UArray a) => Grid d b dyn a -> [a]
-> gridData (Grid arr _ _ (origin, extent) _) = 
+> gridData (Grid arr _ _ (origin, extent) _) =
 >             let invert' = \(i, a) -> (invert i, a)
->                 xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))  
+>                 xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))
 >                 xs' = filter (\(i, a) -> gte i origin && lte i extent) xs
->             in 
+>             in
 >               map snd xs'
 
 > class (Dimension d) => Size d where
@@ -168,7 +171,7 @@ OLD form
 
 
 
-> grid :: (IArray UArray a, Dimension d, 
+> grid :: (IArray UArray a, Dimension d,
 >                  ReifiableIx upper (Index d),
 >                  ReifiableIx lower (Index d)) =>
 >                 Dimensionality d -> Index d -> Index d -> [(Index d, a)] ->
@@ -177,9 +180,9 @@ OLD form
 
 > grid d origin extent xs boundaries =
 >              Grid arr d origin (origin, (dec extent)) boundaries
->              where 
+>              where
 >                 g0 = gridNoBoundary d origin extent xs
->                 es = boundMap d boundaries g0 origin extent 
+>                 es = boundMap d boundaries g0 origin extent
 >                 origin' = add origin (typeToIntIx $ getLowerIx boundaries)
 >                 extent' = add extent (typeToIntIx $ getUpperIx boundaries)
 >                 arr = array (origin', (dec extent')) (es++xs)
@@ -192,17 +195,17 @@ OLD form
 >                  Grid d b dyn a
 > listGrid d origin extent xs boundaries =
 >              Grid arr d origin (origin, (dec extent)) boundaries
->              where 
+>              where
 >                 g0 = listGridNoBoundary d origin extent xs
->                 es = boundMap d boundaries g0 origin extent 
+>                 es = boundMap d boundaries g0 origin extent
 >                 origin' = add origin (typeToIntIx $ getLowerIx boundaries)
 >                 extent' = add extent (typeToIntIx $ getUpperIx boundaries)
 >                 xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
 >                 arr = array (origin', dec extent') (es++xs')
 
-> gridZip :: (IArray UArray x, IArray UArray y, IArray UArray (x, y), Dimension d) => 
+> gridZip :: (IArray UArray x, IArray UArray y, IArray UArray (x, y), Dimension d) =>
 >            Grid d b dyn x -> Grid d b dyn y -> Grid d b dyn (x, y)
-> gridZip (Grid arr d c (l, u) b) (Grid arr' _ c' (l', u') b') 
+> gridZip (Grid arr d c (l, u) b) (Grid arr' _ c' (l', u') b')
 >     | (l /= l') || (u /= u') = error "Can only zip grids of the same size"
 >     | c /= c'                = error "Can only zip grids with the same cursor"
 >     | otherwise              = let arr'' = array (l, u) (map (\((i,x),(i',y)) -> (i, (x, y))) (zip (assocs arr) (assocs arr')))
@@ -227,7 +230,7 @@ OLD form
 >     runA :: (IArray UArray a, Dimension d) => (Grid d b dyn a -> a) -> Grid d b dyn a -> Grid d b dyn a
 
 > instance RunGridA Dynamic where
->     runA f (Grid arr d c (b1, b2) boundaries) = 
+>     runA f (Grid arr d c (b1, b2) boundaries) =
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = accum (curry snd) arr dats'
 >                g0 = Grid arr' d c (b1, b2) NilB
@@ -239,8 +242,7 @@ OLD form
 
 
 > instance RunGridA Static where
->     runA f (Grid arr d c (b1, b2) boundaries) = 
+>     runA f (Grid arr d c (b1, b2) boundaries) =
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = accum (curry snd) arr dats'
 >            in  Grid arr' d c (b1, b2) boundaries
-

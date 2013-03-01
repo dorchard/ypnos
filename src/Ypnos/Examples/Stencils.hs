@@ -9,6 +9,8 @@ import Ypnos
 import Ypnos.CUDA
 import Ypnos.Core.Grid
 
+import Ypnos.Core.Types --TODO: remove
+
 import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral)
 import qualified Data.Array.Accelerate.Interpreter as I
 
@@ -28,25 +30,39 @@ runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
 -- Ypnos GPU (Accelerate)
-avgY :: Floating (Exp a) => Stencil3x3 a -> Exp a
-avgY = [funCUDA| X*Y:|a  b c|
-                      |d @e f|
-                      |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
+
+mirror'
+  :: BoundaryList
+       (Ypnos.Core.Types.Cons
+          (IntT (Pos Zn), IntT (Neg (S Zn)))
+          (Ypnos.Core.Types.Cons
+             (IntT (Neg (S Zn)), IntT (Pos Zn))
+             (Ypnos.Core.Types.Cons
+                (IntT (Pos (S Zn)), IntT (Pos Zn))
+                (Ypnos.Core.Types.Cons
+                   (IntT (Pos Zn), IntT (Pos (S Zn)))
+                   (Ypnos.Core.Types.Cons
+                      (IntT (Neg (S Zn)), IntT (Neg (S Zn)))
+                      (Ypnos.Core.Types.Cons
+                         (IntT (Pos (S Zn)), IntT (Neg (S Zn)))
+                         (Ypnos.Core.Types.Cons
+                            (IntT (Neg (S Zn)), IntT (Pos (S Zn)))
+                            (Ypnos.Core.Types.Cons
+                               (IntT (Pos (S Zn)), IntT (Pos (S Zn))) Ypnos.Core.Types.Nil))))))))
+       Dynamic
+       (IntT (Neg (S Zn)), IntT (Neg (S Zn)))
+       (IntT (Pos (S Zn)), IntT (Pos (S Zn)))
+       (Dim X :* Dim Y)
+       (Exp Float)
+mirror' = undefined
+avgY = [funCPU| X*Y:|a  b c|
+                    |d @e f|
+                    |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
-runAvgY xs = runG (Sten avgY) xs
+runAvgY xs = toArray $ runG (Arr avgY) (fromArray mirror' xs)
 
 -- Ypnos CPU
-avgY' :: (IArray UArray a, Fractional a,
-        InBoundary (IntT (Pos (S Zn)), IntT (Pos (S Zn))) b,
-        InBoundary (IntT (Pos (S Zn)), IntT (Pos Zn)) b,
-        InBoundary (IntT (Pos (S Zn)), IntT (Neg (S Zn))) b,
-        InBoundary (IntT (Pos Zn), IntT (Pos (S Zn))) b,
-        InBoundary (IntT (Neg (S Zn)), IntT (Pos (S Zn))) b,
-        InBoundary (IntT (Neg (S Zn)), IntT (Pos Zn)) b,
-        InBoundary (IntT (Neg (S Zn)), IntT (Neg (S Zn))) b,
-        InBoundary (IntT (Pos Zn), IntT (Neg (S Zn))) b) =>
-        Grid (Dim d0 :* Dim d'0) b dyn a -> a
 avgY' = [funCPU| X*Y:|a  b c|
                     |d @e f|
                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
@@ -54,7 +70,7 @@ avgY' = [funCPU| X*Y:|a  b c|
 gx g = fst (size g)
 gy g = snd (size g)
 
-mirror = [boundary| Float  (*i, -1) g -> g!!!(i, 0) -- top
+mirror = [boundary| Float (*i, -1) g -> g!!!(i, 0) -- top
                           (-1, *j) g -> g!!!(0, j) -- left
                           (+1, *j) g -> g!!!(gx g, j) -- right
                           (*i, +1) g -> g!!!(i, gy g)

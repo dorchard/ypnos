@@ -1,6 +1,7 @@
 > module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, size,
 >               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
 >               funCPU, boundary,
+>               CPUArr(..), Arr(..),
 >               run, runA, runG,
 >               reduceG, mkReducer,
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,
