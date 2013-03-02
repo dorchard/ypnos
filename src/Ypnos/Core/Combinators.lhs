@@ -34,7 +34,7 @@ Ypnos classes.
 > class (GridC g) => RunGrid g arr | g -> arr where
 >     type RunCon g arr x y :: Constraint
 >     runG :: RunCon g arr x y =>
->             (arr g x y)
+>             (x `arr` y)
 >             -> g x -> g y
 
 > instance (Dimension d) => GridC (Grid d b dyn) where
@@ -75,11 +75,13 @@ Ypnos classes.
 >
 > mkReducer = Reducer
 
-> data CPUArr g a b where
->   CPUArr :: (g a -> b) -> CPUArr g a b
+> data CPUArr d b dyn x y where
+>   CPUArr :: (GridC (Grid d b dyn), Dimension d, RunGridA dyn) =>
+>             (Grid d b dyn x -> y) -> CPUArr d b dyn x y
 
-> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) => RunGrid (Grid d b dyn) (CPUArr) where
->     type RunCon (Grid d b dyn) (CPUArr) x y = (IArray UArray y, x ~ y)
+> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) =>
+>          RunGrid (Grid d b dyn) (CPUArr d b dyn) where
+>     type RunCon (Grid d b dyn) (CPUArr d b dyn) x y = (IArray UArray y, x ~ y)
 >     runG (CPUArr f) = runA f
 
 > -- Indexing
