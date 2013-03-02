@@ -37,9 +37,20 @@ Ypnos classes.
 >             (x `arr` y)
 >             -> g x -> g y
 
+> class GridC g => GridList g d b dyn | g -> d, g -> b, g -> dyn where
+>   type ListConst g d b dyn a lower upper :: Constraint
+>   listGrid :: ListConst g d b dyn a lower upper =>
+>               Dimensionality d -> Index d -> Index d -> [a] ->
+>               BoundaryList b dyn lower upper d a ->
+>               g a
+>   type DataConst g d b dyn a :: Constraint
+>   gridData :: DataConst g d b dyn a =>
+>               g a -> [a]
+
 > instance (Dimension d) => GridC (Grid d b dyn) where
 >    type Const (Grid d b dyn) a = (IArray UArray a)
 >    indexC = indexC'
+>
 
 > instance (DimIdentifier x) => Grid1D (Grid (Dim x) b dyn) b where
 >    index1D = index1D'
@@ -49,6 +60,18 @@ Ypnos classes.
 >           => Grid2D (Grid (Dim x :* Dim y) b dyn) b where
 >    index2D = index2D'
 >    unsafeIndex2D = unsafeIndex2D'
+
+> instance (Dimension d) => GridList (Grid d b dyn) d b dyn where
+>   type ListConst (Grid d b dyn) d b dyn a lower upper =
+>     (IArray UArray a, Dimension d,
+>      ReifiableIx upper (Index d),
+>      ReifiableIx lower (Index d))
+>   listGrid = listGrid'
+>   type DataConst (Grid d b dyn) d b dyn a =
+>     (Dimension d, PointwiseOrd (Index d),
+>      IArray UArray a)
+>   gridData = gridData'
+>
 
  instance (DimIdentifier x, DimIdentifier y)
            => GridC2D (Grid (Dim x :* Dim y) b dyn) where
@@ -143,8 +166,8 @@ OLD form
 
 > -- Deconstructor
 
-> gridData :: (Dimension d, PointwiseOrd (Index d), IArray UArray a) => Grid d b dyn a -> [a]
-> gridData (Grid arr _ _ (origin, extent) _) =
+> gridData' :: (Dimension d, PointwiseOrd (Index d), IArray UArray a) => Grid d b dyn a -> [a]
+> gridData' (Grid arr _ _ (origin, extent) _) =
 >             let invert' = \(i, a) -> (invert i, a)
 >                 xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))
 >                 xs' = filter (\(i, a) -> gte i origin && lte i extent) xs
@@ -189,13 +212,13 @@ OLD form
 >                 extent' = add extent (typeToIntIx $ getUpperIx boundaries)
 >                 arr = array (origin', (dec extent')) (es++xs)
 
-> listGrid :: (IArray UArray a, Dimension d,
+> listGrid' :: (IArray UArray a, Dimension d,
 >                  ReifiableIx upper (Index d),
 >                  ReifiableIx lower (Index d)) =>
 >                  Dimensionality d -> Index d -> Index d -> [a] ->
 >                  BoundaryList b dyn lower upper d a ->
 >                  Grid d b dyn a
-> listGrid d origin extent xs boundaries =
+> listGrid' d origin extent xs boundaries =
 >              Grid arr d origin (origin, (dec extent)) boundaries
 >              where
 >                 g0 = listGridNoBoundary d origin extent xs
