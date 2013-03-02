@@ -31,7 +31,7 @@
 
 Ypnos classes.
 
-> class (GridC g) => RunGrid g arr | g -> arr where
+> class (GridC g) => RunGrid g arr | arr -> g where
 >     type RunCon g arr x y :: Constraint
 >     runG :: RunCon g arr x y =>
 >             (x `arr` y)
