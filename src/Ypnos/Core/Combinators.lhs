@@ -50,7 +50,6 @@ Ypnos classes.
 > instance (Dimension d) => GridC (Grid d b dyn) where
 >    type Const (Grid d b dyn) a = (IArray UArray a)
 >    indexC = indexC'
->
 
 > instance (DimIdentifier x) => Grid1D (Grid (Dim x) b dyn) b where
 >    index1D = index1D'

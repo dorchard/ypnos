@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Ypnos.Examples.Stencils where
 
@@ -28,6 +30,10 @@ runAvg :: (IsFloating a, Elt a) =>
           (Array DIM2 a) -> (Array DIM2 a)
 runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
+
+-- Run harness
+runF sten xs (x, y) = gridData $ (runG sten xs')
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
 
 -- Ypnos GPU (Accelerate)
 avgY = [funCPU| X*Y:|a  b c|
@@ -57,8 +63,7 @@ mirror = [boundary| Float (*i, -1) g -> g!!!(i, 0) -- top
 --zeroBoundF = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
 runAvgY' :: [Float] -> (Int,Int) -> [Float]
-runAvgY' xs (x, y) = gridData $ runG (CPUArr avgY') xs'
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
+runAvgY' = runF (CPUArr avgY')
 
 raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float))
             -> [Float] -> (Int,Int) -> [Float]

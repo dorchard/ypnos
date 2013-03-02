@@ -2,6 +2,8 @@
 >               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
 >               funCPU, boundary,
 >               CPUArr(..), Arr(..),
+>               RunGrid, GridC, Grid1D, Grid2D,
+>               RunCon, DataConst, GridList, ListConst,
 >               run, runA, runG,
 >               reduceG, mkReducer,
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,

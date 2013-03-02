@@ -7,6 +7,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 
 module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), Arr(..), toArray, fromArray) where
 
