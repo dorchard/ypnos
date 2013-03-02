@@ -53,6 +53,6 @@ runner :: ([Float] -> (Int,Int) -> [Float])
 runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 ==>
     run1 xs (x,y) == run2 xs (x,y)
 
-prop_run = runner (raiseToList runAvg) (raiseToList runAvgY)
-prop_run2 = runner (runAvgY') (raiseToList runAvgY)
+prop_run = runner (raiseToList runAvg) (runAvgY)
+prop_run2 = runner (runAvgY') (runAvgY)
             --must discount boundaries to make this work

@@ -89,12 +89,20 @@ instance (Shape sh) => Grid2D (GPUGrid b sh) b where
   index2D = undefined
   unsafeIndex2D = undefined
 
+instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) => GridList (GPUGrid b sh) d b Dynamic where
+  type ListConst (GPUGrid b sh) d b Dynamic a l u = ()
+  type DataConst (GPUGrid b sh) d b Dynamic a = ()
+
 instance (Shape sh) => RunGrid (GPUGrid b sh) (Arr b sh) where
-    type RunCon (GPUGrid b sh) (Arr b sh) x y = (Elt y, Stencil sh x (Stencil3x3 x))
-    runG (Arr f) g = fromArray (boundary g) $ Acc.run $ ((stencil . conv) (f) (Mirror)) $ use $ toArray g
+    type RunCon (GPUGrid b sh) (Arr b sh) x y =
+      (Elt y, Stencil sh x (Stencil3x3 x))
+    runG (Arr f) g = fromArray (boundary g) $
+                     Acc.run $ ((stencil . conv) (f) (Mirror)) $
+                     use $ toArray g
 
 conv :: (Shape sh) => (GPUGrid b sh (Exp x) -> Exp y) -> (Stencil3x3 x -> Exp y)
 conv = undefined
+       -- TODO: generalize past 3x3?
 
 -- Old, before using type classes
 run :: forall x y d sh sten.

@@ -31,19 +31,20 @@ runAvg :: (IsFloating a, Elt a) =>
 runAvg xs = I.run (stencil avg Mirror acc_xs)
     where acc_xs = use xs
 
--- Run harness
+-- Ypnos GPU (Accelerate)
 runF sten xs (x, y) = gridData $ (runG sten xs')
     where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
 
--- Ypnos GPU (Accelerate)
 avgY = [funCPU| X*Y:|a  b c|
                     |d @e f|
                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
-runAvgY :: (Array DIM2 Float) -> (Array DIM2 Float)
-runAvgY xs = toArray $ runG (Arr avgY) (fromArray mirror xs)
+runAvgY = runF (Arr avgY)
 
 -- Ypnos CPU
+runF' sten xs (x, y) = gridData $ (runG sten xs')
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
+
 avgY' = [funCPU| X*Y:|a  b c|
                     |d @e f|
                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
@@ -62,8 +63,7 @@ mirror = [boundary| Float (*i, -1) g -> g!!!(i, 0) -- top
 
 --zeroBoundF = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
-runAvgY' :: [Float] -> (Int,Int) -> [Float]
-runAvgY' = runF (CPUArr avgY')
+runAvgY' = runF' (CPUArr avgY')
 
 raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float))
             -> [Float] -> (Int,Int) -> [Float]
