@@ -79,8 +79,13 @@ boundary = undefined
 
 instance (Shape sh) => GridC (GPUGrid b sh) where
   type Const (GPUGrid b sh) a = ()
-instance (Shape sh) => Grid1D (GPUGrid b sh) b
-instance (Shape sh) => Grid2D (GPUGrid b sh) b
+  indexC = undefined
+instance (Shape sh) => Grid1D (GPUGrid b sh) b where
+  index1D = undefined
+  unsafeIndex1D = undefined
+instance (Shape sh) => Grid2D (GPUGrid b sh) b where
+  index2D = undefined
+  unsafeIndex2D = undefined
 
 instance (Shape sh) => RunGrid (GPUGrid b sh) Arr where
     type RunCon (GPUGrid b sh) Arr x y = (Elt y, Stencil sh x (Stencil3x3 x))
