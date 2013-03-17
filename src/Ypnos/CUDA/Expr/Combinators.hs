@@ -8,6 +8,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 
 module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), Arr(..), toArray, fromArray) where
@@ -62,46 +63,97 @@ type instance IDimension (Z :. Int :. Int) = Dim X :* Dim Y
     {-listGrid = undefined-}
     {-gridData = undefined-}
 
-data Arr b sh x y where
-    Arr :: Const (GPUGrid b sh) (Exp x) => (GPUGrid b sh (Exp x) -> Exp y) -> Arr b sh x y
+data Arr b dyn lower upper sh x y where
+    Arr :: (Const (GPUGrid b dyn lower upper sh) (Exp x),
+            ListConst
+                (GPUGrid b dyn lower upper sh)
+                (IDimension sh)
+                Nil
+                Static
+                (Exp y)
+                (IntT (Pos Zn), IntT (Pos Zn))
+                (IntT (Pos Zn), IntT (Pos Zn)),
+            GridList
+                (GPUGrid b dyn lower upper sh)
+                (IDimension sh)
+                Nil
+                Static) =>
+           (GPUGrid b dyn lower upper sh (Exp x) -> Exp y) ->
+           Arr b dyn lower upper sh x y
 
-data GPUGrid b sh x
+data GPUGrid b dyn lower upper sh x where
+  GPUGrid :: BoundaryList b dyn lower upper (IDimension sh) x -> Array sh x ->
+             GPUGrid b dyn lower upper sh x
 
 fromArray :: (Shape sh) =>
-             BoundaryList b dyn lower upper (IDimension sh) a -> Array sh y ->
-             GPUGrid b sh y
-fromArray = undefined
+             BoundaryList b dyn lower upper (IDimension sh) y -> Array sh y ->
+             GPUGrid b dyn lower upper sh y
+fromArray = GPUGrid
 
-toArray :: Shape sh => GPUGrid b sh y -> Array sh y
-toArray = undefined
+toArray :: Shape sh => GPUGrid b dyn lower upper sh y -> Array sh y
+toArray (GPUGrid _ arr) = arr
 
 boundary :: (Shape sh) =>
-            GPUGrid b sh y -> BoundaryList b dyn lower upper (IDimension sh) a
-boundary = undefined
+            GPUGrid b dyn lower upper sh y ->
+            BoundaryList b dyn lower upper (IDimension sh) y
+boundary (GPUGrid b _) = b
 
-instance (Shape sh) => GridC (GPUGrid b sh) where
-  type Const (GPUGrid b sh) a = ()
-  indexC = undefined
-instance (Shape sh) => Grid1D (GPUGrid b sh) b where
-  index1D = undefined
-  unsafeIndex1D = undefined
-instance (Shape sh) => Grid2D (GPUGrid b sh) b where
-  index2D = undefined
-  unsafeIndex2D = undefined
+instance (Shape sh) => GridC (GPUGrid b dyn lower upper sh) where
+  type Const (GPUGrid b dyn lower upper sh) a = ()
+  indexC = error "indexC is not implemented"
+instance (Shape sh) => Grid1D (GPUGrid b dyn lower upper sh) b where
+  index1D = error "index1D is not implemented"
+  unsafeIndex1D = error "unsafeIndex1D is not implemented"
+instance (Shape sh) => Grid2D (GPUGrid b dyn lower upper sh) b where
+  index2D = error "index2D is not implemented"
+  unsafeIndex2D = error "unsafeIndex2D is not implemented"
 
-instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) => GridList (GPUGrid b sh) d b Dynamic where
-  type ListConst (GPUGrid b sh) d b Dynamic a l u = ()
-  type DataConst (GPUGrid b sh) d b Dynamic a = ()
 
-instance (Shape sh) => RunGrid (GPUGrid b sh) (Arr b sh) where
-    type RunCon (GPUGrid b sh) (Arr b sh) x y =
-      (Elt y, Stencil sh x (Stencil3x3 x))
-    runG (Arr f) g = fromArray (boundary g) $
-                     Acc.run $ ((stencil . conv) (f) (Mirror)) $
-                     use $ toArray g
+fromDim :: Dimensionality d -> Index d -> IShape d
+fromDim (Dim _) (x) = Z :. x
+fromDim (Dim _ :* Dim _) (x, y) = Z :. x :. y
+--fromDim (Dim _ :* Dim _ :* Dim _) (x, y, z) = Z :. x :. y :. z
 
-conv :: (Shape sh) => (GPUGrid b sh (Exp x) -> Exp y) -> (Stencil3x3 x -> Exp y)
-conv = undefined
+instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>
+         GridList (GPUGrid b dyn lower upper sh) d b dyn where
+  type ListConst (GPUGrid b dyn lower upper sh) d b dyn a l u =
+    (Elt a, l ~ lower, u ~ upper)
+  type DataConst (GPUGrid b dyn lower upper sh) d b dyn a = ()
+  listGrid dim start end ls bound = GPUGrid bound arr
+      where arr = fromList sh ls
+            sh = fromDim dim end
+  gridData (GPUGrid _ arr) = toList arr
+
+instance Converter d sh => RunGrid (GPUGrid b dyn lower upper sh)
+                               (Arr b dyn lower upper sh) where
+    type RunCon (GPUGrid b dyn lower upper sh) (Arr b dyn lower upper sh) x y =
+      (Elt y, Stencil sh x (Stencil3x3 x), x ~ y)
+    runG (Arr f) g = fromArray b $ Acc.run $ sten $ use $ toArray g
+                     where sten = stencil (conv f) Mirror
+                           b = boundary g
+
+class (Shape sh, d ~ IDimension sh, sh ~ IShape d) =>
+      Converter d sh | d -> sh where
+    conv :: (Shape sh,
+             GridList
+                 (GPUGrid b dyn lower upper sh) d Nil Static,
+             ListConst
+                 (GPUGrid b dyn lower upper sh)
+                 d
+                 Nil
+                 Static
+                 (Exp x)
+                 (IntT (Pos Zn), IntT (Pos Zn))
+                 (IntT (Pos Zn), IntT (Pos Zn))) =>
+            (GPUGrid b dyn lower upper sh (Exp x) -> Exp y) ->
+            (Stencil3x3 x -> Exp y)
+
+instance Converter (Dim X :* Dim Y) (Z :. Int :. Int) where
+    conv sten = sten'
+            where sten' ((a,b,c),
+                         (d,e,f),
+                         (g,h,i)) = sten (listGrid (Dim X :* Dim Y) (0,0) (3,3)
+                                          [a,b,c,d,e,f,g,h,i] NilB)
        -- TODO: generalize past 3x3?
 
 -- Old, before using type classes
