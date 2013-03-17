@@ -31,13 +31,13 @@
 
 Ypnos classes.
 
-> class (GridC g) => RunGrid g arr | arr -> g where
+> class RunGrid g arr | arr -> g where
 >     type RunCon g arr x y :: Constraint
 >     runG :: RunCon g arr x y =>
 >             (x `arr` y)
 >             -> g x -> g y
 
-> class GridC g => GridList g d b dyn | g -> d, g -> b, g -> dyn where
+> class GridList g d b dyn | g -> d, g -> b, g -> dyn where
 >   type ListConst g d b dyn a lower upper :: Constraint
 >   listGrid :: ListConst g d b dyn a lower upper =>
 >               Dimensionality d -> Index d -> Index d -> [a] ->
@@ -47,18 +47,6 @@ Ypnos classes.
 >   gridData :: DataConst g d b dyn a =>
 >               g a -> [a]
 
-> instance (Dimension d) => GridC (Grid d b dyn) where
->    type Const (Grid d b dyn) a = (IArray UArray a)
->    indexC = indexC'
-
-> instance (DimIdentifier x) => Grid1D (Grid (Dim x) b dyn) b where
->    index1D = index1D'
->    unsafeIndex1D = unsafeIndex1D'
-
-> instance (DimIdentifier x, DimIdentifier y)
->           => Grid2D (Grid (Dim x :* Dim y) b dyn) b where
->    index2D = index2D'
->    unsafeIndex2D = unsafeIndex2D'
 
 > instance (Dimension d) => GridList (Grid d b dyn) d b dyn where
 >   type ListConst (Grid d b dyn) d b dyn a lower upper =
@@ -98,10 +86,10 @@ Ypnos classes.
 > mkReducer = Reducer
 
 > data CPUArr d b dyn x y where
->   CPUArr :: (GridC (Grid d b dyn), Dimension d, RunGridA dyn) =>
+>   CPUArr :: (Dimension d, RunGridA dyn) =>
 >             (Grid d b dyn x -> y) -> CPUArr d b dyn x y
 
-> instance (GridC (Grid d b dyn), Dimension d, RunGridA dyn) =>
+> instance (Dimension d, RunGridA dyn) =>
 >          RunGrid (Grid d b dyn) (CPUArr d b dyn) where
 >     type RunCon (Grid d b dyn) (CPUArr d b dyn) x y = (IArray UArray y, x ~ y)
 >     runG (CPUArr f) = runA f
@@ -115,18 +103,18 @@ The following is desugared from !!! inside a boundary macro
 
 Hidden by grid patterns
 
-> {-# INLINE index1D' #-}
-> index1D' :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Int -> Grid (Dim d) b dyn a -> a
-> index1D' _ n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
+> {-# INLINE index1D #-}
+> index1D :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Int -> Grid (Dim d) b dyn a -> a
+> index1D _ n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
 
 OLD form
 
  index1D :: (Safe (IntT n) b, IArray UArray a) => IntT n -> Grid (Dim d) b dyn a -> a
  index1D n (Grid arr _ c _ _) = arr!(c + (intTtoInt n))
 
-> {-# INLINE index2D' #-}
-> index2D' :: (Safe (IntT n, IntT n') b, IArray UArray a) => (IntT n, IntT n') -> (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
-> index2D' _ (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
+> {-# INLINE index2D #-}
+> index2D :: (Safe (IntT n, IntT n') b, IArray UArray a) => (IntT n, IntT n') -> (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
+> index2D _ (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
 
 OLD form
 
@@ -137,13 +125,13 @@ OLD form
 > index3D :: (Safe (IntT n, IntT n', IntT n'') b, IArray UArray a) => (IntT n, IntT n', IntT n'') -> Grid (Dim d :* (Dim d' :* Dim d'')) b dyn a -> a
 > index3D (n, n', n'') (Grid arr _ (x, y, z) _ _) = arr!(x + intTtoInt n, y + intTtoInt n', z + intTtoInt n'')
 
-> {-# INLINE unsafeIndex2D' #-}
-> unsafeIndex2D' :: (IArray UArray a) => (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
-> unsafeIndex2D' (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
+> {-# INLINE unsafeIndex2D #-}
+> unsafeIndex2D :: (IArray UArray a) => (Int, Int) -> Grid (Dim d :* Dim d') b dyn a -> a
+> unsafeIndex2D (n, n') (Grid arr d (x, y) _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n, y + n'))
 
-> {-# INLINE unsafeIndex1D' #-}
-> unsafeIndex1D' :: (IArray UArray a) => Int -> Grid (Dim d) b dyn a -> a
-> unsafeIndex1D' n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
+> {-# INLINE unsafeIndex1D #-}
+> unsafeIndex1D :: (IArray UArray a) => Int -> Grid (Dim d) b dyn a -> a
+> unsafeIndex1D n (Grid arr d x _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n))
 
  class RelativeIndex i d where
      index :: (Safe i b, IArray UArray a) => i -> Grid d b dyn a -> a
@@ -154,8 +142,8 @@ OLD form
  instance RelativeIndex (IntT n, IntT n', IntT n'') (Dim d :* (Dim d' :* Dim d'')) where
      index = index3D
 
-> indexC' :: (Dimension d, IArray UArray a) => Grid d b dyn a -> a
-> indexC' (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
+> indexC :: (Dimension d, IArray UArray a) => Grid d b dyn a -> a
+> indexC (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
 
 > (!!!) :: (IArray UArray a, Ix (Index d)) => Grid d b dyn a -> Index d -> a
 > (Grid arr _ _ _ _) !!! i = arr!i

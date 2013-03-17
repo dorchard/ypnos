@@ -31,19 +31,6 @@
 
 Grid data type
 
-> class GridC g where
->    type Const g a :: Constraint
->    indexC :: Const g a => g a -> a
-
-> class GridC g => Grid1D g b | g -> b where
->    index1D :: (Const g a, Safe (IntT n) b) => IntT n -> Int -> g a -> a
->    unsafeIndex1D :: Const g a => Int -> g a -> a
-
-> class GridC g => Grid2D g b | g -> b where
->    index2D :: (Const g a, Safe (IntT n, IntT n') b)
->                => (IntT n, IntT n') -> (Int, Int) -> g a -> a
->    unsafeIndex2D :: Const g a => (Int, Int) -> g a -> a
-
 > data Grid d b dyn a where
 >    Grid :: (UArray (Index d) a) ->                      -- Array of values
 >            Dimensionality d ->                          -- Dimensionality term

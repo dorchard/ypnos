@@ -13,7 +13,7 @@ import Ypnos.Core.Grid
 
 import Data.Maybe
 import Data.Generics
-import Language.Haskell.TH 
+import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Quote
 import Language.Haskell.Meta.Parse
@@ -26,8 +26,8 @@ import Debug.Trace
 import Data.List hiding (find)
 
 -- |The 'QuasiQuoter' that converts Ypnos syntax into Haskell code.
-funCUDA :: QuasiQuoter
-funCUDA = QuasiQuoter { quoteExp = quoteExprExp,
+funGPU :: QuasiQuoter
+funGPU = QuasiQuoter { quoteExp = quoteExprExp,
                    quotePat = quoteExprPat,
                    quoteType = undefined,
                    quoteDec = undefined
@@ -58,13 +58,13 @@ interpret (GridFun pat body) =
      Right bodyExpr -> Just gridFun
          where
            gridFun = lamE [gpat] (return bodyExpr)
-           gpat = pattern pat 
+           gpat = pattern pat
 
 -- * Pattern Conversion
 -- |Before converting into the patq representation we must first centre the
 -- pattern for accelerate.
 pattern' :: GridIx i => GridPatt i VarP-> PatQ
-pattern' = patQ . centre 
+pattern' = patQ . centre
 
 -- |We must convert to to GridPatt where the dimensionality is in the type
 -- (above).
@@ -89,10 +89,10 @@ patQ grid = gwrap tupP (gmap name grid)
 --
 -- After the centrering:
 --
--- @    
+-- @
 --         coffset roffset
 --          *---*   *---*
---  | _ | _ | c | _ | _ | 
+--  | _ | _ | c | _ | _ |
 -- @
 centre :: GridIx i => GridPatt i VarP-> GridPatt i VarP
 centre grid = addAfter after bl $ addBefore before bl grid
@@ -100,14 +100,14 @@ centre grid = addAfter after bl $ addBefore before bl grid
 
           before = coffset loc bounds
           after = roffset loc bounds
-          
+
           loc = cursorLoc grid
           bounds = size grid
 
 -- ** Helpers for centering
 -- | Finds the maximum of a and b-a-1.
 longest :: GridIx i => i -> i -> i
-longest a b = elMax a (b-a-(fromInteger 1)) 
+longest a b = elMax a (b-a-(fromInteger 1))
 
 -- | The cursor offset
 coffset :: GridIx i => i -> i -> i
@@ -127,7 +127,7 @@ cursorLoc grid = find isCursor grid
 -- and 2D pattern simultaneously.
 class (Ix i, Num i, ElMax i) => GridIx i where
     data GridPatt i :: * -> *
-    gwrap :: ([a] -> a) -> GridPatt i a -> a 
+    gwrap :: ([a] -> a) -> GridPatt i a -> a
     gmap :: (a -> b) -> GridPatt i a -> GridPatt i b
     addBefore :: i -> a -> GridPatt i a -> GridPatt i a
     addAfter :: i -> a -> GridPatt i a -> GridPatt i a
@@ -136,7 +136,7 @@ class (Ix i, Num i, ElMax i) => GridIx i where
 
 -- |1D Case instanciated with 'GridPatt1D'
 instance GridIx Int where
-    data GridPatt Int a = 
+    data GridPatt Int a =
         -- | Creates a 1D grid.
         GridPatt1D Int [a] deriving Show
     gwrap f (GridPatt1D _ l) = f l
@@ -147,17 +147,17 @@ instance GridIx Int where
     size (GridPatt1D x _) = x
 
 -- |Helper function for adding before or after in a 2D grid.
-addBeforeAfter ::  (forall b . [b] -> [b] -> [b]) 
-                -> (Int,Int) -> a -> GridPatt (Int,Int) a 
+addBeforeAfter ::  (forall b . [b] -> [b] -> [b])
+                -> (Int,Int) -> a -> GridPatt (Int,Int) a
                 -> GridPatt (Int,Int) a
-addBeforeAfter f (i,j) a (GridPatt2D x y ll) = 
+addBeforeAfter f (i,j) a (GridPatt2D x y ll) =
     GridPatt2D (x+i) (y+j) (topbottom (map leftright ll))
     where topbottom = f $ replicate (i) (replicate (y+j) a)
           leftright = f $ replicate j a
 
 -- |2D Case instanciated with 'GridPatt2D'
 instance GridIx (Int, Int) where
-    data GridPatt (Int, Int) a = 
+    data GridPatt (Int, Int) a =
         -- | Creates a 2D grid.
         GridPatt2D Int Int [[a]] deriving Show
     gwrap f (GridPatt2D _ _ ll) = f (map f ll)
@@ -172,8 +172,8 @@ instance GridIx (Int, Int) where
 
 -- ** Helpers for Offset and Range calculations
 
-instance Num (Int, Int) where 
-    (+) = tzip (+)  
+instance Num (Int, Int) where
+    (+) = tzip (+)
     (*) = tzip (*)
     negate = tmap negate
     abs = tmap abs
@@ -199,11 +199,11 @@ instance ElMax (Int, Int) where
 -- ** Converting the basic elements.
 -- Handles conversion between 'VarP' and 'PatQ'.
 name :: VarP -> PatQ
-name v = 
+name v =
     case uncurse v of
       PatternVar x -> varP $ mkName x
       PatternBlank -> wildP
-    
+
 -- | Strips 'Cursor' or 'NonCursor'
 uncurse :: VarP -> VarP'
 uncurse (Cursor v) = v
