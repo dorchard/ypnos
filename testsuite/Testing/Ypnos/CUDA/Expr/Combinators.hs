@@ -30,8 +30,8 @@ import Control.Monad
 
 comb_tests = testGroup "Ypnos.CUDA.Expr.Combinators"
     [ testProperty "Reduce" prop_reduce
-    , testProperty "Run against accelerate" prop_run
---    , testProperty "Run against original Ypnos" prop_run2
+--    , testProperty "Run against accelerate" prop_run
+    , testProperty "Run against original Ypnos" prop_run2
     ]
 
 red :: Shape sh => (a -> a -> a) -> a -> Array sh a -> a
@@ -53,6 +53,6 @@ runner :: ([Float] -> (Int,Int) -> [Float])
 runner run1 run2 xs (x, y) = upper 10 [x, y] && lower 2 [x, y] && length xs > 0 ==>
     run1 xs (x,y) == run2 xs (x,y)
 
-prop_run = runner (raiseToList runAvg) (runAvgY)
+--prop_run = runner (raiseToList runAvg) (runAvgY)
 prop_run2 = runner (runAvgY') (runAvgY)
             --must discount boundaries to make this work
