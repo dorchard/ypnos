@@ -72,6 +72,7 @@ Pretty print the numbers for debugging
 Type-level functions on numbers 
 
 > type family Pred n
+> type instance Pred Int = Int
 > type instance Pred (Neg (S (S n))) = Neg (S n)    -- Pred -(n+1) = -n
 > type instance Pred (Neg (S Zn)) = Pos Zn          -- Pred -1 = 0
 > type instance Pred (Pos Zn) = Pos Zn              -- Pred 0 = 0
@@ -85,6 +86,10 @@ Type-level functions on numbers
 
  instance ReifiableIx (Nat Int) Int where
      typeToIntIx = undefined
+
+> instance ReifiableIx Int Int where
+>     typeToIntIx _ = 0
+>     typeToSymIx _ = 0
 
 > instance ReifiableIx (Nat Zn) Int where
 >     typeToIntIx _ = 0
@@ -102,10 +107,10 @@ Type-level functions on numbers
 >     typeToIntIx _ = typeToIntIx (undefined::(Nat n))
 >     typeToSymIx _ = Pos (typeToSymIx (undefined::(Nat n)))
 
-> instance (ReifiableIx (IntT a) Int, ReifiableIx (IntT b) Int) => 
->          ReifiableIx (IntT a, IntT b) (Int, Int) where
->     typeToIntIx _ = (typeToIntIx (undefined::(IntT a)), typeToIntIx (undefined::(IntT b)))
->     typeToSymIx _ = (typeToSymIx (undefined::(IntT a)), typeToSymIx (undefined::(IntT b)))
+> instance (ReifiableIx a Int, ReifiableIx b Int) => 
+>          ReifiableIx (a, b) (Int, Int) where
+>     typeToIntIx _ = (typeToIntIx (undefined::(a)), typeToIntIx (undefined::(b)))
+>     typeToSymIx _ = (typeToSymIx (undefined::(a)), typeToSymIx (undefined::(b)))
 
 > instance (ReifiableIx (IntT a) Int, ReifiableIx (IntT b) Int, ReifiableIx (IntT c) Int) =>
 >          ReifiableIx (IntT a, IntT b, IntT c) (Int, Int, Int) where

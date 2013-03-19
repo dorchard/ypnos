@@ -69,11 +69,11 @@ data GPUArr sh x y where
            GPUArr sh x y
 
 data GPUGrid b dyn lower upper sh x where
-  GPUGrid :: BoundaryList b dyn lower upper (IDimension sh) x -> Array sh x ->
+  GPUGrid :: BoundaryList b (IDimension sh) x -> Array sh x ->
              GPUGrid b dyn lower upper sh x
 
 fromArray :: (Shape sh) =>
-             BoundaryList b dyn lower upper (IDimension sh) y -> Array sh y ->
+             BoundaryList b (IDimension sh) y -> Array sh y ->
              GPUGrid b dyn lower upper sh y
 fromArray = GPUGrid
 
@@ -82,7 +82,7 @@ toArray (GPUGrid _ arr) = arr
 
 boundary :: (Shape sh) =>
             GPUGrid b dyn lower upper sh y ->
-            BoundaryList b dyn lower upper (IDimension sh) y
+            BoundaryList b (IDimension sh) y
 boundary (GPUGrid b _) = b
 
 fromDim :: Dimensionality d -> Index d -> IShape d
@@ -91,10 +91,10 @@ fromDim (Dim _ :* Dim _) (x, y) = Z :. x :. y
 --fromDim (Dim _ :* Dim _ :* Dim _) (x, y, z) = Z :. x :. y :. z
 
 instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>
-         GridList (GPUGrid b dyn lower upper sh) d b dyn where
-  type ListConst (GPUGrid b dyn lower upper sh) d b dyn a l u =
-    (Elt a, l ~ lower, u ~ upper)
-  type DataConst (GPUGrid b dyn lower upper sh) d b dyn a = ()
+         GridList (GPUGrid b dyn lower upper sh) d b where
+  type ListConst (GPUGrid b dyn lower upper sh) d b a =
+    (Elt a)
+  type DataConst (GPUGrid b dyn lower upper sh) d b a = ()
   listGrid dim start end ls bound = GPUGrid bound arr
       where arr = fromList sh ls
             sh = fromDim dim end
@@ -117,8 +117,8 @@ run :: forall x y d sh sten.
     (EltRepr (Index d)) ~ (EltRepr sh),
     (IShape d) ~ sh) =>
     (sten -> Exp y)
-    -> Grid d Nil Static x
-    -> Grid d Nil Static y
+    -> Grid d Nil x
+    -> Grid d Nil y
 run f (Grid arr d c (b1, b2) boundaries) =
     Grid (toIArray res) d c (b1, b2) NilB
     where res = Acc.run (sten_acc) :: Array sh y

@@ -31,16 +31,16 @@
 
 Grid data type
 
-> data Grid d b dyn a where
->    Grid :: (UArray (Index d) a) ->                      -- Array of values
->            Dimensionality d ->                          -- Dimensionality term
->            Index d ->                                   -- Cursor ("current index")
->            (Index d, Index d) ->                        -- Lower and upper bounds of extent
->            BoundaryList ixs dyn lower upper d a ->      -- Boundary information
->            Grid d ixs dyn a
+> data Grid d b a where
+>    Grid :: (UArray (Index d) a) ->    -- Array of values
+>            Dimensionality d ->        -- Dimensionality term
+>            Index d ->                 -- Cursor ("current index")
+>            (Index d, Index d) ->      -- Lower and upper bounds of extent
+>            BoundaryList ixs d a ->     -- Boundary information
+>            Grid d ixs a
 
 > instance (Ix (Index d), IArray UArray a,
->           Show (Index d), Show a) => Show (Grid d b dyn a) where
+>           Show (Index d), Show a) => Show (Grid d b a) where
 >     show (Grid arr d c (b1, b2) _) =
 >           (show arr)++"@"++(show c)++" ["++(show b1)++", "++(show b2)++"]"
 
@@ -74,53 +74,38 @@ Constraints for enforcing safe indexing
 >           InBoundary (IntT n, IntT n', IntT n'') b) => Safe (IntT n, IntT n', IntT n'') b
 
 > class InBoundary i ixs
-> instance InBoundary i (Cons i ixs)                    -- Head matches
-> instance InBoundary i ixs => InBoundary i (Cons i' ixs)   -- Head does not match, thus recurse
+> instance InBoundary i (Cons (i, dyn) ixs)                      -- Head matches
+> instance InBoundary i ixs => InBoundary i (Cons (i', dyn) ixs) -- Head does not match, thus recurse
 
 Boundary lists, important for defining a grid
 
-> data BoundaryList b dyn lower upper d a where
->     NilB :: BoundaryList Nil Static (Origin d) (Origin d) d a
->     ConsB :: BuildBoundary d ix dyn =>
->              BoundaryFun d ix a dyn
->               -> BoundaryList b dyn' lower upper d a
->               -> BoundaryList (Cons (AbsToReln ix) b) (Dynamism dyn dyn')
->                      (Lower (AbsToReln ix) lower) (Upper (AbsToReln ix) upper) d a
+> data BoundaryList b d a where
+>     NilB :: BoundaryList Nil d a
+>     ConsB :: (BuildBoundary d ix dyn, ReifiableIx ix (Index d)) =>
+>               BoundaryFun d ix a dyn
+>            -> BoundaryList b d a
+>            -> BoundaryList (Cons (ix, dyn) b) d a
 
 Boundaries functions
 
 > data BoundaryFun d ix a dyn where
 >     Static :: (ix -> a) -> BoundaryFun d ix a Static
->     Dynamic :: ((ix, (Grid d Nil Static a)) -> a) -> BoundaryFun d ix a Dynamic
-
-"Plain" boundary lists (less type-level information, easier for manipulating)
-
-> data BoundaryListP b d a where
->     NilBP :: BoundaryListP Nil d a
->     ConsBP :: BoundaryFun d ix a dyn
->               -> BoundaryListP b d a
->               -> BoundaryListP (Cons (ix, dyn) b) d a
+>     Dynamic :: ((ix, (Grid d Nil a)) -> a) -> BoundaryFun d ix a Dynamic
 
 Computes the values of a boundary region, given a boundary list
 
 > boundMap :: (IndexOps (Index d)) => Dimensionality d ->
->             BoundaryList ixs dyn lower upper d a -> Grid d Nil Static a ->
+>             BoundaryList ixs d a -> Grid d Nil a ->
 >             Index d -> Index d -> [(Index d, a)]
 > boundMap d NilB _ _ _ = []
 > boundMap d (ConsB f fs) g0 origin extent = (buildBoundary d f (origin, dec extent) g0) ++
->                                            boundMap d fs g0 origin extent
-
-
-> getUpperIx :: (ReifiableIx upper b) => BoundaryList t dyn lower upper d a -> upper
-> getUpperIx _ = typeToSymIx (undefined::upper)
-> getLowerIx :: (ReifiableIx lower b) => BoundaryList t dyn lower upper d a -> lower
-> getLowerIx _ = typeToSymIx (undefined::lower)
+>                                              boundMap d fs g0 origin extent
 
 Generate boundary indices from boundary definitions
 
 > class BuildBoundary d ix dyn where
 >    buildBoundary :: Dimensionality d -> BoundaryFun d ix a dyn -> (Index d, Index d) ->
->                     (Grid d Nil Static a) -> [(Index d, a)]
+>                     (Grid d Nil a) -> [(Index d, a)]
 
 > instance (ReifiableIx (IntT n) Int) => BuildBoundary (Dim d) (IntT n) Dynamic where
 >     buildBoundary d (Dynamic f) (x0, xn) grid =
@@ -214,14 +199,19 @@ Generate boundary indices from boundary definitions
 Zips together two boundary functions
 
 > class BFunZip dyn where
->     bfun :: (Functor (Grid d Nil Static)) =>
+>     bfunZip :: (Functor (Grid d Nil)) =>
 >             BoundaryFun d ix a dyn -> BoundaryFun d ix b dyn -> BoundaryFun d ix (a, b) dyn
+>     bfunUnzip :: (Functor (Grid d Nil)) =>
+>             BoundaryFun d ix (a, b) dyn -> (BoundaryFun d ix a dyn, BoundaryFun d ix b dyn)
 
 > instance BFunZip Static where
->     bfun (Static x) (Static y) = Static (\i -> (x i, y i))
+>     bfunZip (Static x) (Static y) = Static (\i -> (x i, y i))
+>     bfunUnzip (Static x) = (Static (fst . x), Static (snd . x))
 
 > instance BFunZip Dynamic where
->     bfun (Dynamic x) (Dynamic y) = Dynamic (\(i, g) -> (x (i, fmap fst g), y (i, fmap snd g)))
+>     bfunZip (Dynamic x) (Dynamic y) = Dynamic (\(i, g) -> (x (i, fmap fst g), y (i, fmap snd g)))
+>     bfunUnzip (Dynamic x) = (Dynamic (\(i, g) -> fst $ x (i, fmap (\i -> (i, undefined)) g)),
+>                              Dynamic (\(i, g) -> snd $ x (i, fmap (\i -> (undefined, i)) g)))
 
 Boundary zipping
 
@@ -235,32 +225,77 @@ Boundary zipping
                   | otherwise = let (a, zs') = bmatch' x zs
                                 in (a, z : zs')
 
-> class BMatch b b' rb d | b b' -> rb where
->     bmatch :: BoundaryListP b d x ->
->               BoundaryListP b' d y ->
->               BoundaryListP rb d (x, y)
+> class BUnzip b where
+>     bUnzip :: (Functor (Grid d Nil)) => BoundaryList b d (x, y) -> (BoundaryList b d x, BoundaryList b d y)
 
-> instance BMatch Nil Nil Nil d where
->     bmatch NilBP NilBP = NilBP
+> instance BUnzip Nil where
+>     bUnzip NilB = (NilB, NilB)
 
-> instance (Functor (Grid d Nil Static), BMatch xs ys zs d, BFunZip dyn) =>
->          BMatch (Cons (x, dyn) xs) (Cons (x, dyn) ys) (Cons (x, dyn) zs) d where
->     bmatch (ConsBP x xs) (ConsBP y ys) = ConsBP (bfun x y) (bmatch xs ys)
+> instance (BUnzip ixs, BFunZip dyn) => BUnzip (Cons (i, dyn) ixs) where
+>     bUnzip (ConsB x xs) = let (y, z) = bUnzip xs
+>                               (a, b) = bfunUnzip x
+>                           in (ConsB a y, ConsB b z)
 
-> instance (BMatch' x dyn ys ys', BMatch xs (Cons y ys') zs d, BFunZip dyn, Functor (Grid d Nil Static)) =>
->          BMatch (Cons (x, dyn) xs) (Cons y ys) (Cons (x, dyn) zs) d where
->     bmatch (ConsBP x xs) (ConsBP y ys) =  let (y', ys') = bmatch' x ys
->                                           in ConsBP y' (bmatch xs (ConsBP y ys'))
+> class BZip b b' rb d | b b' -> rb where
+>     bzip :: BoundaryList b d x ->
+>             BoundaryList b' d y ->
+>             BoundaryList rb d (x, y)
+>
+
+> instance BZip Nil Nil Nil d where
+>     bzip NilB NilB = NilB
+>
+
+> instance (Functor (Grid d Nil), BZip xs ys zs d, BFunZip dyn) =>
+>          BZip (Cons (x, dyn) xs) (Cons (x, dyn) ys) (Cons (x, dyn) zs) d where
+>     bzip (ConsB x xs) (ConsB y ys) = ConsB (bfunZip x y) (bzip xs ys)
+>
+
+> instance (BZip' x dyn ys ys', BZip xs (Cons y ys') zs d, BFunZip dyn, Functor (Grid d Nil)) =>
+>          BZip (Cons (x, dyn) xs) (Cons y ys) (Cons (x, dyn) zs) d where
+>     bzip (ConsB x xs) (ConsB y ys) = let (y', ys') = bzip' x ys
+>                                      in ConsB y' (bzip xs (ConsB y ys'))
 
 
-> class BMatch' ix dyn b rb | ix dyn b -> rb where
->     bmatch' :: (Functor (Grid d Nil Static), BFunZip dyn) =>
->                BoundaryFun d ix x dyn -> BoundaryListP b d y ->
->                (BoundaryFun d ix (x, y) dyn, BoundaryListP rb d y)
+> class BZip' ix dyn b rb | ix dyn b -> rb where
+>     bzip' :: (Functor (Grid d Nil), BFunZip dyn) =>
+>                BoundaryFun d ix x dyn -> BoundaryList b d y ->
+>                (BoundaryFun d ix (x, y) dyn, BoundaryList rb d y)
 
-> instance BMatch' ix dyn (Cons (ix, dyn) xs) xs where
->     bmatch' f (ConsBP x xs) = (bfun f x, xs)
+> instance BZip' ix dyn (Cons (ix, dyn) xs) xs where
+>     bzip' f (ConsB x xs) = (bfunZip f x, xs)
 
-> instance (BMatch' ix dyn ys ys') => BMatch' ix dyn (Cons y ys) (Cons y ys') where
->     bmatch' f (ConsBP y ys) = let (a, ys') = bmatch' f ys
->                               in (a, ConsBP y ys')
+> instance (BZip' ix dyn ys ys') => BZip' ix dyn (Cons y ys) (Cons y ys') where
+>     bzip' f (ConsB y ys) = let (a, ys') = bzip' f ys
+>                            in (a, ConsB y ys')
+
+
+Computes information on boundaries
+
+> class (Dimension d) => BoundaryInfo ixs d where
+>     lowerIx :: BoundaryList ixs d a -> Index d
+>     upperIx :: BoundaryList ixs d a -> Index d
+
+> instance (DimIdentifier d) => BoundaryInfo Nil (Dim d) where
+>     lowerIx NilB = 0
+>     upperIx NilB = 0
+
+> instance (DimIdentifier d, ReifiableIx ix Int, BoundaryInfo ixs (Dim d))
+>        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d) where
+>     lowerIx (ConsB _ ixs) = min (lowerIx ixs) (typeToIntIx (undefined :: ix))
+>     upperIx (ConsB _ ixs) = max (upperIx ixs) (typeToIntIx (undefined :: ix))
+
+> instance (DimIdentifier d, DimIdentifier d') => BoundaryInfo Nil (Dim d :* Dim d') where
+>     lowerIx NilB = (0, 0)
+>     upperIx NilB = (0, 0)
+
+> instance (DimIdentifier d, DimIdentifier d',
+>           ReifiableIx ix (Int, Int), BoundaryInfo ixs (Dim d :* Dim d'))
+>        => BoundaryInfo (Cons (ix, dyn) ixs) (Dim d :* Dim d') where
+>     lowerIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
+>                                 (x', y') = lowerIx ixs
+>                              in (x `min` x', y `min` y')
+>     upperIx (ConsB _ ixs) = let (x, y) = typeToIntIx (undefined :: ix)
+>                                 (x', y') = upperIx ixs
+>                              in (x `max` x', y `max` y')
+>
