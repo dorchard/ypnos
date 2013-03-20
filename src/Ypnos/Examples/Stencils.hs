@@ -108,7 +108,7 @@ life' = [funCPU| X*Y:| a  b  c |
                          (n == 3) || ((1 < n) && (n < 4) && e) |]
 
 runLife' :: [Bool] -> (Int,Int) -> [Bool]
-runLife' xs (x, y) = trace (show xs') $ gridData $ runG (CPUArr life') xs'
+runLife' xs (x, y) = gridData $ runG (CPUArr life') xs'
     where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirrorB
 
 lifer f (LGrid w h l) = LGrid w h (f l (h, w))
@@ -132,4 +132,3 @@ grid l = LGrid w h (concatMap f l)
               h = length l
               g '.' = False
               g _   = True
-
