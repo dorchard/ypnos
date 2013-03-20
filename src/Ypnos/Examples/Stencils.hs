@@ -132,3 +132,12 @@ grid l = LGrid w h (concatMap f l)
               h = length l
               g '.' = False
               g _   = True
+
+-- Id function (for copy on/off times)
+
+runId' :: (IsFloating a, Elt a) =>
+          (Array DIM2 a) -> (Array DIM2 a)
+runId' xs = I.run acc_xs
+    where acc_xs = use xs
+
+runId = raiseToList runId'

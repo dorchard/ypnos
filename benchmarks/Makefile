@@ -1,21 +1,23 @@
-benchmarks : comp_avg
+benchmarks : comp_avg comp_life id
 
 sources = Benchmark.hs
 bench = runghc -i"../src" Benchmark.hs
-funcs = life
+funcs = avg life id
 archs = gpu cpu
-nums = 10
-
-funs : comp_life
+nums = 10 100 1000
 
 comp_life : comp_life_100 comp_life_1000
 comp_avg : comp_avg_100 comp_avg_1000
+id : id_gpu_100.csv id_gpu_1000.csv
 
 comp_life_100 : life_cpu_100.csv life_gpu_100.csv
 comp_life_1000 : life_cpu_1000.csv life_gpu_1000.csv
 
 comp_avg_100 : avg_cpu_100.csv avg_gpu_100.csv
 comp_avg_1000 : avg_cpu_1000.csv avg_gpu_1000.csv
+
+comp_life_100 : life_cpu_100.csv life_gpu_100.csv
+comp_life_1000 : life_cpu_1000.csv life_gpu_1000.csv
 
 define BENCHMARK_template =
 $(1)_$(2)_$(3)0.csv : $(sources)

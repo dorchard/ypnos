@@ -5,7 +5,7 @@ module Benchmark where
 import System.Environment
 
 import Ypnos.Examples.Stencils
-  (runAvgY, runAvg, runAvgY', raiseToList, runLife, runLife')
+  (runAvgY, runAvg, runAvgY', raiseToList, runLife, runLife', runId)
 
 import Criterion
 import Criterion.Monad
@@ -25,6 +25,8 @@ avgA = raiseToList runAvg l
 
 lifeCPU = runLife' l2
 lifeGPU = runLife  l2
+
+idGPU = runId l
 
 stenBench :: ((Int,Int) -> b) -> [Benchmark]
 stenBench f = [ bench "10x10" $ whnf f (10,10)
@@ -69,6 +71,7 @@ getFun "avg" "gpu" = Fun avgGPU
 getFun "avg" "cpu" = Fun avgCPU
 getFun "life" "gpu" = Fun lifeGPU
 getFun "life" "cpu" = Fun lifeCPU
+getFun "id" "gpu" = Fun idGPU
 
 main = do [function, impl, begin, step, end, filename] <- getArgs
           let fun = getFun function impl
