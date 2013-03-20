@@ -85,19 +85,22 @@ boundary :: (Shape sh) =>
             BoundaryList b (IDimension sh) y
 boundary (GPUGrid b _) = b
 
-fromDim :: Dimensionality d -> Index d -> IShape d
-fromDim (Dim _) (x) = Z :. x
-fromDim (Dim _ :* Dim _) (x, y) = Z :. x :. y
+class Conv i sh | i -> sh where
+  fromDim :: i -> sh
+instance Conv (Int) (Z :. Int) where
+  fromDim (x) = (Z :. x)
+instance Conv (Int,Int) (Z :. Int :. Int) where
+  fromDim (x, y) = Z :. y :. x
 --fromDim (Dim _ :* Dim _ :* Dim _) (x, y, z) = Z :. x :. y :. z
 
 instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>
          GridList (GPUGrid b dyn lower upper sh) d b where
   type ListConst (GPUGrid b dyn lower upper sh) d b a =
-    (Elt a)
+    (Elt a, Conv (Index d) sh)
   type DataConst (GPUGrid b dyn lower upper sh) d b a = ()
   listGrid dim start end ls bound = GPUGrid bound arr
-      where arr = fromList sh ls
-            sh = fromDim dim end
+    where arr = fromList sh ls
+          sh = fromDim end
   gridData (GPUGrid _ arr) = toList arr
 
 instance Shape sh => RunGrid (GPUGrid b dyn lower upper sh)
