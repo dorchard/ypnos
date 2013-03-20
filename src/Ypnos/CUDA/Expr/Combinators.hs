@@ -111,7 +111,7 @@ instance Shape sh => RunGrid (GPUGrid b dyn lower upper sh)
     type RunCon (GPUGrid b dyn lower upper sh) (GPUArr sh) x y =
       (Elt y, Stencil sh x (Stencil3x3 x), x ~ y)
     runG (GPUArr f) g = fromArray b $ Acc.run $ sten $ use $ toArray g
-                     where sten = stencil f Mirror
+                     where sten = stencil f Clamp
                            b = boundary g
 
 -- Old, before using type classes
