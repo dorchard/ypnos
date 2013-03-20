@@ -102,6 +102,9 @@ instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>
     where arr = fromList sh ls
           sh = fromDim end
   gridData (GPUGrid _ arr) = toList arr
+  type IxConst (GPUGrid b dyn lower upper sh) d b a = (Conv (Index d) sh)
+  (GPUGrid _ arr) !!! i = indexArray arr i'
+    where i' = fromDim i
 
 instance Shape sh => RunGrid (GPUGrid b dyn lower upper sh)
                                (GPUArr sh) where

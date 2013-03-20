@@ -47,6 +47,8 @@ Ypnos classes.
 >   type DataConst g d b  a :: Constraint
 >   gridData :: DataConst g d b  a =>
 >               g a -> [a]
+>   type IxConst g d b a :: Constraint
+>   (!!!) :: IxConst g d b a => g a -> Index d -> a
 
 
 > instance (Dimension d) => GridList (Grid d b) d b where
@@ -58,7 +60,10 @@ Ypnos classes.
 >     (Dimension d, PointwiseOrd (Index d),
 >      IArray UArray a)
 >   gridData = gridData'
->
+>   type IxConst (Grid d b) d b a =
+>     (IArray UArray a, Ix (Index d))
+>   (!!!) = ix
+
 
  instance (DimIdentifier x, DimIdentifier y)
            => GridC2D (Grid (Dim x :* Dim y) b dyn) where
@@ -146,11 +151,8 @@ OLD form
 > indexC :: (Dimension d, IArray UArray a) => Grid d b  a -> a
 > indexC (Grid arr _ c _ _) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) c)
 
-> (!!!) :: (IArray UArray a, Ix (Index d)) => Grid d b a -> Index d -> a
-> (Grid arr _ _ _ _) !!! i = arr!i
-
 > ix :: (IArray UArray a, Ix (Index d)) => Grid d b a -> Index d -> a
-> ix = (!!!)
+> ix (Grid arr _ _ _ _) i = arr!i
 
 Grid deconstructors
 
