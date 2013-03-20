@@ -1,7 +1,7 @@
 benchmarks : comp_avg
 
 sources = Benchmark.hs
-bench = runhaskell Benchmark.hs
+bench = runghc -i"../src" Benchmark.hs
 funcs = avg
 archs = gpu cpu
 nums = 10
