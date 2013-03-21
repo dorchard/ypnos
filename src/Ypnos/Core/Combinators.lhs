@@ -89,8 +89,9 @@ Grid deconstructors
 
 > gridData :: (Dimension d, PointwiseOrd (Index d), IArray UArray a) => Grid d b a -> [a]
 > gridData (Grid arr _ _ (origin, extent) _) = 
->             let invert' = \(i, a) -> (invert i, a)
->                 xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))  
+>             let -- invert' = \(i, a) -> (invert i, a)
+>                 -- xs = map invert' (sortBy (\(i, _) -> \(i', _) -> compare i i') (map invert' $ assocs arr))  
+>                 xs = sortBy (\(i, _) -> \(i', _) -> compare i i') (assocs arr)
 >                 xs' = filter (\(i, a) -> gte i origin && lte i extent) xs
 >             in 
 >               map snd xs'
@@ -141,7 +142,9 @@ Grid constructors
 >                 es = boundMap d boundaries g0 origin extent 
 >                 origin' = add origin (lowerIx boundaries)
 >                 extent' = add extent (upperIx boundaries)
->                 xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
+>                 xs' = zip (range (origin, (dec extent))) xs
+>                 -- xs' = zip (map invert (range (invert $ origin, invert $ (dec extent)))) xs
+>                       
 >                 arr = array (origin', dec extent') (es++xs')
 
 Ziping and unzipping grids

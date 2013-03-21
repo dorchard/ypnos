@@ -20,8 +20,8 @@ library
   hs-source-dirs: src
   build-depends:  base,
                   template-haskell,
-                  syb ==0.3.*,
-                  array ==0.4.*,
-                  directory ==1.2.*,
+                  syb >=0.3,
+                  array >=0.4,
+                  directory >=1.2,
                   haskell-src-meta,
                   parsec
