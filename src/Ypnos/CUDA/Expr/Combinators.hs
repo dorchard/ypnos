@@ -90,7 +90,7 @@ class Conv i sh | i -> sh where
 instance Conv (Int) (Z :. Int) where
   fromDim (x) = (Z :. x)
 instance Conv (Int,Int) (Z :. Int :. Int) where
-  fromDim (x, y) = Z :. y :. x
+  fromDim (x, y) = Z :. x :. y
 --fromDim (Dim _ :* Dim _ :* Dim _) (x, y, z) = Z :. x :. y :. z
 
 instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>

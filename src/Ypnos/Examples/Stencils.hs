@@ -35,7 +35,7 @@ runAvg xs = I.run (stencil avg Mirror acc_xs)
 
 -- Ypnos GPU (Accelerate)
 runF sten xs (x, y) = gridData $ (runG sten xs')
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirror
 
 avgY = [funGPU| X*Y:|a  b c|
                     |d @e f|
@@ -45,11 +45,11 @@ runAvgY = runF (GPUArr avgY)
 
 -- Ypnos CPU
 runF' sten xs (x, y) = gridData $ (runG sten xs')
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x+1, y+1) (cycle xs) mirror
+    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirror
 
 avgY' = [funCPU| X*Y:|a  b c|
-                    |d @e f|
-                    |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
+                     |d @e f|
+                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
 gx g = fst (size g)
 gy g = snd (size g)
