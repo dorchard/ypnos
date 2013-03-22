@@ -76,18 +76,30 @@ Ypnos classes.
     unsafeIndexXD = unsafeIndex2D
 
 
-> class ReduceGrid grid where
->     data Fun1 a b
->     data Fun2 a b c
->     reduceG :: Reducer a c -> grid a -> c
+> class ReduceGrid g where
+>     type ConstFun1 g a b :: Constraint
+>     type ConstFun2 g a b c :: Constraint
+>     type Fun1 g a b
+>     type Fun2 g a b c
+>     reduceG :: Reducer g a c -> g a -> c
 
-> data Reducer a c where
->     Reducer ::   (Fun2 a b b)
->               -> (Fun2 b b b)
+> data Reducer g a c where
+>     Reducer ::   (ConstFun2 g a b b,
+>                   ConstFun2 g b b b,
+>                   ConstFun1 g a c)
+>               => (Fun2 g a b b)
+>               -> (Fun2 g b b b)
 >               -> b
->               -> (Fun1 b c)
->               -> Reducer a c
->
+>               -> (Fun1 g b c)
+>               -> Reducer g a c
+> mkReducer ::     (ConstFun2 g a b b,
+>                   ConstFun2 g b b b,
+>                   ConstFun1 g a c)
+>               => (Fun2 g a b b)
+>               -> (Fun2 g b b b)
+>               -> b
+>               -> (Fun1 g b c)
+>               -> Reducer g a c
 > mkReducer = Reducer
 
 > data CPUArr d b x y where

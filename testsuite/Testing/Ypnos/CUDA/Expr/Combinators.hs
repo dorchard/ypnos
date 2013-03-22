@@ -43,9 +43,8 @@ lower l = all (\ x -> x >= l)
 
 prop_reduce :: [Int] -> Int -> Int -> Gen Prop
 prop_reduce xs x y =  bounded 50 x y && (length xs) > 0 ==>
-    red (+) 0 arr == (reduceG reducer arr)
-    where reducer = mkReducer (Fun2A (+)) (Fun2A (+)) 0 (Fun1A id)
-          arr = fromList (Z :. x :. y) (cycle xs)
+    red (+) 0 arr == (reduceG (mkReducer (+) (+) 0 id) arr)
+    where arr = fromList (Z :. x :. y) (cycle xs)
 
 runner :: ([Float] -> (Int,Int) -> [Float])
        -> ([Float] -> (Int,Int) -> [Float])
