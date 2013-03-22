@@ -30,7 +30,7 @@ avg ((a, b, c),
 
 runAvg :: (IsFloating a, Elt a) =>
           (Array DIM2 a) -> (Array DIM2 a)
-runAvg xs = I.run (stencil avg Mirror acc_xs)
+runAvg xs = I.run (stencil avg Clamp acc_xs)
     where acc_xs = use xs
 
 -- Ypnos GPU (Accelerate)
