@@ -25,7 +25,7 @@ library
   build-depends:    base ==4.*, 
                     accelerate ==0.12.*,
                     template-haskell ==2.7.*, 
-                    ghc-prim
+                    ghc-prim,
                     syb >=0.3,
                     array >=0.4,
                     directory >=1.2,
