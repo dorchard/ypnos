@@ -12,6 +12,7 @@ import Criterion.Monad
 import Criterion.Analysis
 import Criterion.Environment
 import Criterion.Config
+import Statistics.Resampling.Bootstrap
 import Data.Vector.Unboxed hiding (map, mapM, foldr, foldr1, (++))
 import Prelude hiding (sum, length)
 import Control.Monad.Trans
@@ -41,9 +42,11 @@ stenBench f = [ bench "10x10" $ whnf f (10,10)
 runB :: Fun -> Int -> IO Double
 runB (Fun f) x = let v = do env <- measureEnvironment
                             l <- runBenchmark env (whnf f (x,x))
-                            s <- liftIO $ analyseSample 0.5 l 5
-                            m <- analyseMean l 5
-                            return m
+                            cfg <- getConfig
+                            let conf = fromLJ cfgConfInterval cfg
+                            let res  = fromLJ cfgResamples cfg
+                            s <- liftIO $ analyseSample conf l res
+                            return (estPoint $ anMean s)
 
          in  withConfig defaultConfig v
 
