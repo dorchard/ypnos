@@ -21,9 +21,9 @@
 > fun :: QuasiQuoter
 > fun = let ?safe = False 
 >       in QuasiQuoter { quoteExp = quoteExprExp,
->                        quotePat = quoteExprPat --,
->                        --quoteType = undefined,
->                        --quoteDec = undefined
+>                        quotePat = quoteExprPat,
+>                        quoteType = undefined,
+>                        quoteDec = undefined
 >                      }
 
 > quoteExprExp :: (?safe :: Bool) => String -> ExpQ

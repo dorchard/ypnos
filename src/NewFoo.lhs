@@ -5,6 +5,7 @@
 > import Data.Array.Base
 > import qualified GHC.Arr as GHCArr
 > import Data.HList
+> import Unsafe.Coerce
 
 > import System.IO
 
@@ -49,7 +50,10 @@
 
  index1D _ n (Grid arr d x _ _ cache) = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + n)
 
- run :: (IArray UArray y, Dimension d) => (Grid d b x -> y) -> Grid d b x -> Grid d Nil y
+> run :: (IArray UArray y, Dimension d) => (GridN d b ixs x -> y) -> Grid d b HNil x -> Grid d Nil HNil y
+> run f g@(GridN arr d c (b1, b2) boundaries _) = let gv' = fillValues f g
+>                                                in undefined
+
  run f (Grid arr d c (b1, b2) boundaries) =
             let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
                 arr' = array (b1, b2) dats'

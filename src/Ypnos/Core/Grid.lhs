@@ -36,6 +36,7 @@ Grid data type
 >            BoundaryList ixs d a ->     -- Boundary information
 >            Grid d ixs a
 
+
 > instance (Ix (Index d), IArray UArray a, 
 >           Show (Index d), Show a) => Show (Grid d b a) where
 >     show (Grid arr d c (b1, b2) _) =
