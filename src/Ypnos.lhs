@@ -1,8 +1,18 @@
-> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, size,
->               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
->               fun, boundary,
+> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, 
+>               gridData, size,
+>               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, 
+>               unsafeIndex1D,
+
 >               -- runUnroll, 
 >               runReduceSimple, run, runA,
+
+>               funCPU, boundary,
+>               CPUArr(..), GPUArr(..),
+>               RunGrid,
+>               RunCon, DataConst, GridList, ListConst,
+>               run, runA, runG,
+>               reduceG, mkReducer,
+
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,
 >               X(..),Y(..), Dimensionality(..), Dim, (:*),
 >               DimIdentifier,
@@ -24,8 +34,4 @@
 > import Ypnos.Core.Run
 > import Ypnos.Core.Types
 > import Ypnos.Core.Boundary
-
-
-
-
 
