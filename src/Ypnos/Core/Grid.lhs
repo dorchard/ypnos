@@ -123,9 +123,9 @@ Gather over a grid, preserving boundaries
 
 
 > runGReduceSimple :: (IArray UArray y, Dimension d, Monoid r) =>
->                     (Grid d b x -> Reduce r y)
+>                     (Grid d b x -> (r, y))
 >                  -> Grid d b x
->                  -> Reduce r (Grid d Nil y)
+>                  -> (r, Grid d Nil y)
 > runGReduceSimple f (Grid arr d c (b1, b2) bndrs) = 
 >          let g = (\(r, as) -> \c' -> let (r', x) = f (Grid arr d c' (b1, b2) bndrs)
 >                                      in  (mappend r r', ((c', x):as)))
@@ -245,23 +245,24 @@ Deconstructors
 >              in  map snd xs'
 
 > instance (DimIdentifier d) => Size (Grid (Dim d)) where
->     type SizeAbs (Grid (Dim d)) = (Index d)
+>     type SizeAbs (Grid (Dim d)) = (Index (Dim d))
 >     size (Grid _ _ _ (l, b) _) = b - l
 
 > instance (DimIdentifier d, DimIdentifier d') => Size (Grid ((Dim d) :* (Dim d'))) where
->     type SizeAbs (Grid ((Dim d) :* (Dim d'))) = (Index d, Index d')
+>     type SizeAbs (Grid ((Dim d) :* (Dim d'))) = (Index (Dim d), Index (Dim d'))
 >     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
 
 Ziping and unzipping grids
 
-> instance Dimension d => Zip (Grid d) where
+> instance (Functor (Grid d Nil), Dimension d) => Zip (Grid d) where
 >     type BZipC (Grid d) b b' b'' = BZip b b' b'' d
+>     type BUnzipC (Grid d) b      = (BUnzip b)
 
 >     zipC = gridZip
 >     unzipC = gridUnzip
 
 > gridZip :: (IArray UArray x, IArray UArray y, IArray UArray (x, y),
->             BZip b b' b'' d,
+>             BZip b b' b'' d, Functor (Grid d Nil), 
 >             Dimension d) =>
 >            Grid d b x -> Grid d b' y -> Grid d b'' (x, y)
 > gridZip (Grid arr d c (l, u) b) (Grid arr' _ c' (l', u') b')

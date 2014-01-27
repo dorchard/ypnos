@@ -50,13 +50,13 @@ Relative (safe) indexing
 > class Indexing (g :: * -> * -> *) ix where
 >     type IndexG g ix
 >     type IxInv g ix a :: Constraint
->     index :: (Safe ix (Absify b), IxInv g ix a) => (IndexG g ix) -> g b a -> a
+>     index :: (Safe ix (Absify b), IxInv g ix a, ElemInv g a) => (IndexG g ix) -> g b a -> a
 
 Deconstructors
 
 > class Data (g :: * -> * -> *) where
 >     type DataInv g a :: Constraint
->     getData :: g b a -> [a]
+>     getData :: DataInv g a => g b a -> [a]
 
 
 > class Size (g :: * -> * -> *) where
@@ -67,9 +67,10 @@ Zipping and unzipping
 
 > class Zip (g :: * -> * -> *) where
 >     type BZipC g b b' b'' :: Constraint
+>     type BUnzipC g b :: Constraint
 
->     zipC :: (ElemInv g x, ElemInv g y, ElemInv g (x, y), BZipC g b b b'') => g b x -> g b' y -> g b'' (x, y)
->     unzipC :: (ElemInv g x, ElemInv g y, ElemInv g (x, y)) => g b (x, y) -> (g b x, g b y)
+>     zipC :: (ElemInv g x, ElemInv g y, ElemInv g (x, y), BZipC g b b' b'') => g b x -> g b' y -> g b'' (x, y)
+>     unzipC :: (ElemInv g x, ElemInv g y, ElemInv g (x, y), BUnzipC g b) => g b (x, y) -> (g b x, g b y)
 
 
 

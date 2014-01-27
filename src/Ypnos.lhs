@@ -1,17 +1,23 @@
 > module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, 
->               gridData, size,
->               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, 
->               unsafeIndex1D,
 
->               -- runUnroll, 
->               runReduceSimple, run, runA,
 
+>               -- General Ypnos combinators
+>               runA, run, 
+>               reduce, runReduceSimple, mkReducer, 
+>               index,
+>               getData, size,
+>               zipC,
+>               unzipC,
+
+>               -- Grid specific
+>               indexC, index1D, index2D, index3D, (!!!), 
+
+
+>               -- Expression consutrctors
 >               funCPU, boundary,
->               CPUArr(..), GPUArr(..),
->               RunGrid,
->               RunCon, DataConst, GridList, ListConst,
->               run, runA, runG,
->               reduceG, mkReducer,
+>               -- CPUArr(..), GPUArr(..),
+>               -- RunGrid,
+>               --RunCon, DataConst, GridList, ListConst,
 
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,
 >               X(..),Y(..), Dimensionality(..), Dim, (:*),
