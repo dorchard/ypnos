@@ -59,8 +59,8 @@ Deconstructors
 >     getData :: DataInv g a => g b a -> [a]
 
 
-> class Size (g :: * -> * -> *) where
->     type SizeAbs g
+> type family SizeAbs (g :: * -> * -> *)
+> class Size (g :: * -> * -> *) where     
 >     size :: g b a -> SizeAbs g
 
 Zipping and unzipping

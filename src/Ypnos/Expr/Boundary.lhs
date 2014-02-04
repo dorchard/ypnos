@@ -7,11 +7,13 @@
 
 > import Data.Generics
 > import Language.Haskell.TH 
+> import Language.Haskell.TH.Syntax
 > import Language.Haskell.TH.Quote
 > import Language.Haskell.Meta.Parse
 > import Ypnos.Expr.Expr
 
 > import Ypnos.Core.Grid
+> import Ypnos.Core.Types
 > import Ypnos.Core.Combinators
 > import Debug.Trace
 
@@ -108,8 +110,19 @@
 >                       Right expr -> [fn]
 >                          where 
 >                            (tvs, pred, dimTyp) = descriptorToDimensionality i
->                            typ' = [t| $(conT $ mkName "BoundaryFun") $(dimTyp) $(typ) $(conT $ mkName elementType) $(conT $ mkName "Static") |]
->                            typ'' = forallT tvs (return pred) typ'
+>                            typ' = [t| $(conT $ mkName "BoundaryFun") $(varT $ mkName "g") $(dimTyp) $(typ) $(conT $ mkName elementType) $(conT $ mkName "Static") |]
+
+>                            ctx = sequenceQ $ 
+>                                   [--classP (mkName "IxConst") [varT $ mkName "g", dimTyp, typ, conT $ mkName elementType], 
+>                                    classP (mkName "GridConstructor") [varT $ mkName "g"]
+>                                    --classP (mkName "Size") [appT (varT $ mkName "g") dimTyp]
+>                                   ] ++ (map return pred)
+>                            typ'' = forallT ((PlainTV $ mkName "g"):tvs) ctx typ'
+
+[t| Size ($(varT $ mkName "g") $(dimTyp)) |] typ'
+
+(return ((ClassP (mkName "Size") [(varT $ mkName "g"), [t|$(dimTyp)|]]):pred)) typ'
+
 >                            fn = sigE (appE (conE $ mkName "Static") (lamE [pat] (return $ expr))) typ''
 > interpretCase elementType (Parameterised i var exp) = 
 >                 let (pat, typ) = interpretRegionDescriptor i
@@ -119,9 +132,14 @@
 >                        where
 >                          elemTypeConstr = conT $ mkName elementType
 >                          (tvs, pred, dimTyp) = descriptorToDimensionality i
->                          typ' = [t| $(conT $ mkName "BoundaryFun") $(dimTyp) $(typ) $(elemTypeConstr) 
+>                          typ' = [t| $(conT $ mkName "BoundaryFun") $(varT $ mkName "g") $(dimTyp) $(typ) $(elemTypeConstr) 
 >                                     $(conT $ mkName "Dynamic") |]
->                          typ'' = forallT tvs (return pred) typ'
+>                          ctx = sequenceQ $ 
+>                                   [classP (mkName "IxConst") [varT $ mkName "g", dimTyp, [t| Nil |], conT $ mkName elementType], 
+>                                    classP (mkName "GridConstructor") [varT $ mkName "g"],
+>                                    classP (mkName "Size") [appT (varT $ mkName "g") dimTyp]] ++ (map return pred)
+
+>                          typ'' = forallT ((PlainTV $ mkName "g"):tvs) ctx typ'
 >                          fn = sigE (appE (conE $ mkName "Dynamic") (lamE [tupP [pat, varP $ mkName var]]
 >                                                                        (return expr))) typ''
 

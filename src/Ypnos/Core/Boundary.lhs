@@ -38,7 +38,7 @@ Boundary lists, important for defining a grid
 
 Boundaries functions
 
-> data BoundaryFun g d ix a dyn where
+> data BoundaryFun (g :: * -> * -> * -> *) d ix a dyn where
 >     Static :: (ix -> a) -> BoundaryFun g d ix a Static
 >     Dynamic :: ((ix, (g d Nil a)) -> a) -> BoundaryFun g d ix a Dynamic
 

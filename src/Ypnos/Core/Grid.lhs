@@ -39,14 +39,14 @@ General grid interface
 
 > class GridConstructor (g :: * -> * ->  * -> *) where
 
->   type ConstInv g b d a :: Constraint
+>   type ConstInv g d b a :: Constraint
 
 >   listGrid :: (ConstInv g d b a, Dimension d) => 
 >                  Dimensionality d
->               -> (Index d, Index d)
->               -> [a] 
->               -> BoundaryList g b d a
->               -> g d b a
+>                -> (Index d, Index d)
+>                -> [a] 
+>                -> BoundaryList g b d a
+>                -> g d b a
 
    type DataConst g d b a :: Constraint
 
@@ -244,12 +244,14 @@ Deconstructors
 >                  xs' = filter (\(i, a) -> gte i origin && lte i extent) xs
 >              in  map snd xs'
 
+
+> type instance SizeAbs (g ((Dim d) :* (Dim d'))) = (Index (Dim d), Index (Dim d'))
+> type instance SizeAbs (g (Dim d)) = (Index (Dim d))
+
 > instance (DimIdentifier d) => Size (Grid (Dim d)) where
->     type SizeAbs (Grid (Dim d)) = (Index (Dim d))
 >     size (Grid _ _ _ (l, b) _) = b - l
 
 > instance (DimIdentifier d, DimIdentifier d') => Size (Grid ((Dim d) :* (Dim d'))) where
->     type SizeAbs (Grid ((Dim d) :* (Dim d'))) = (Index (Dim d), Index (Dim d'))
 >     size (Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)
 
 Ziping and unzipping grids

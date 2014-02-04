@@ -22,7 +22,9 @@
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,
 >               X(..),Y(..), Dimensionality(..), Dim, (:*),
 >               DimIdentifier,
->               Static, Dynamic
+>               BoundaryFun(..), Static, Dynamic, 
+>               BoundaryList(..), 
+>               Size(..)
 >               ) where
 
 > import Prelude hiding (iterate)
@@ -37,7 +39,6 @@
 > import Ypnos.Core.Grid
 > import Ypnos.Core.Combinators
 > import Ypnos.Core.Dimensions
-> import Ypnos.Core.Run
 > import Ypnos.Core.Types
 > import Ypnos.Core.Boundary
 

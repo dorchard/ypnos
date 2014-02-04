@@ -3,17 +3,17 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, NoMonomorphismRestriction #-}
 
 module Ypnos.Examples.Stencils where
 
 import Ypnos
-import Ypnos.CUDA
+import Ypnos.Backend.Accelerate
 import Ypnos.Core.Grid
 
-import Ypnos.Core.Types --TODO: remove
 
-import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral, map, not)
+import Data.Array.Accelerate hiding (fst, snd, size, fromIntegral, map, not, (!!), null, (++),sum)
+import qualified Data.Array.Accelerate as Acc
 import qualified Data.Array.Accelerate.Interpreter as I
 
 import Data.Array.Unboxed hiding (Array)
@@ -34,18 +34,18 @@ runAvg xs = I.run (stencil avg Clamp acc_xs)
     where acc_xs = use xs
 
 -- Ypnos GPU (Accelerate)
-runF sten xs (x, y) = gridData $ (runG sten xs')
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirror
+runF sten xs (x, y) = getData $ (runA sten xs')
+    where xs' = listGrid (Dim X :* Dim Y) ((0, 0), (x, y)) (cycle xs) mirror
 
 avgY = [funGPU| X*Y:|a  b c|
                     |d @e f|
                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
 
-runAvgY = runF (GPUArr avgY)
+runAvgY = runF avgY
 
 -- Ypnos CPU
-runF' sten xs (x, y) = gridData $ (runG sten xs')
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirror
+runF' sten xs (x, y) = getData $ (runA sten xs')
+    where xs' = listGrid (Dim X :* Dim Y) ((0, 0), (x, y)) (cycle xs) mirror
 
 avgY' = [funCPU| X*Y:|a  b c|
                      |d @e f|
@@ -65,7 +65,7 @@ mirror = [boundary| Float (*i, -1) g -> g!!!(i, 0) -- top
 
 --zeroBoundF = [boundary| Float from (-1, -1) to (+1, +1) -> 0.0 |]
 
-runAvgY' = runF' (CPUArr avgY')
+runAvgY' = runF' avgY'
 
 raiseToList :: ((Array DIM2 Float) -> (Array DIM2 Float))
             -> [Float] -> (Int,Int) -> [Float]
@@ -76,7 +76,7 @@ raiseToList f xs (x,y) = toList $ f arr
 -- Game of Life
 
 count :: [Exp Bool] -> Exp Int
-count = sum . (map (\ x -> x ? (1, 0)))
+count = Acc.sum . (Acc.map (\ x -> x ? (1, 0)))
 
 life = [funGPU| X*Y:| a  b  c |
                     | d @e  f |
@@ -96,8 +96,8 @@ mirrorB = [boundary| Bool (*i, -1) g -> g!!!(i, 0) -- top
 --zeroBoundB = [boundary| Bool from (-1, -1) to (+1, +1) -> False |]
 
 runLife :: [Bool] -> (Int,Int) -> [Bool]
-runLife xs (x, y) = gridData $ runG (GPUArr life) xs'
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirrorB
+runLife xs (x, y) = getData $ runA life xs'
+    where xs' = listGrid (Dim X :* Dim Y) ((0, 0), (x, y)) (cycle xs) mirrorB
 
 count' = sum . (map (\ x -> if x then 1 else 0))
 
@@ -108,8 +108,8 @@ life' = [funCPU| X*Y:| a  b  c |
                          (n == 3) || ((1 < n) && (n < 4) && e) |]
 
 runLife' :: [Bool] -> (Int,Int) -> [Bool]
-runLife' xs (x, y) = gridData $ runG (CPUArr life') xs'
-    where xs' = listGrid (Dim X :* Dim Y) (0, 0) (x, y) (cycle xs) mirrorB
+runLife' xs (x, y) = getData $ runA life' xs'
+    where xs' = listGrid (Dim X :* Dim Y) ((0, 0), (x, y)) (cycle xs) mirrorB
 
 lifer f (LGrid w h l) = LGrid w h (f l (h, w))
 

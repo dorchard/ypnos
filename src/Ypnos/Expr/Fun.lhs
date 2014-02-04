@@ -13,6 +13,8 @@
 > import Language.Haskell.Meta.Parse
 > import Ypnos.Expr.Expr
 
+> import Ypnos.Backend.CPU
+
 > import Debug.Trace
 
 > fvar = varE . mkName
@@ -49,7 +51,7 @@
 >       Left x -> error x
 >       Right bodyExpr -> Just gridFun
 >           where
->             gridFun = lamE [gpat] (letE bindings (return bodyExpr))
+>             gridFun = [| CPUstencil $(lamE [gpat] (letE bindings (return bodyExpr))) |]
 >             gpat = varP $ mkName "reserved_grid"  
 >             bindings = interpretPattern pattern
 

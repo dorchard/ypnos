@@ -1,21 +1,12 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+> {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, FlexibleContexts, TypeOperators,
+>              TypeFamilies, GADTs, FunctionalDependencies, UndecidableInstances, ScopedTypeVariables #-}
 
-Ypnos accelerate backend by Sam Pattuzzi (2012-13)
---------------------------------------------------
+Based on the Ypnos Accelerate backend by Sam Pattuzzi (2012-13)
+---------------------------------------------------------------
 
-> module Ypnos.Backend.Accelerate where
+> module Ypnos.Backend.Accelerate(funGPU,GPUStencil(..)) where
 
-module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), GPUArr(..), toArray, fromArray) where
+> import Ypnos.Backend.CUDA.Expr.Fun -- Special stencil fun macro
 
 > import Data.Array.Accelerate hiding (flatten)
 > import Data.Array.Accelerate.Interpreter as Acc
@@ -24,10 +15,11 @@ module Ypnos.CUDA.Expr.Combinators (Fun1(..), Fun2(..), GPUArr(..), toArray, fro
  import Data.Array.IArray hiding (Array)
  import Data.Array.Unboxed hiding (Array)
 
-import Ypnos.Core.Dimensions
-import Ypnos.Core.Grid
-import Ypnos.Core.Types
-import Ypnos.Core.Combinators
+> import Ypnos.Core.Boundary
+> import Ypnos.Core.Dimensions
+> import Ypnos.Core.Grid
+> import Ypnos.Core.Types
+> import Ypnos.Core.Combinators
 
 import Prelude hiding (map, zipWith, replicate)
 
@@ -69,27 +61,26 @@ Map Accelerate "shapes" to Ypnos dimensions
 > type instance IDimension (Z :. Int) =  Dim X
 > type instance IDimension (Z :. Int :. Int) = Dim X :* Dim Y
 
-{-instance YGrid (Array sh x) where-}
-    {-listGrid = undefined-}
-    {-gridData = undefined-}
+> data GPUStencil d x y where
+>    GPUStencil :: (Stencil (IShape d) x (sten x)) => (sten x -> Exp y) -> GPUStencil d (GPUGrid d b x) y 
 
-> data GPUstencil sh x y where
->    GPUstencil :: (Stencil sh x sten) => (sten -> Exp y) -> GPUstencil sh x y 
+> data GPUGrid d b a where
+>     GPUGrid ::
+>                Dimensionality d 
+>             -> BoundaryList GPUGrid b d a
+>             -> Array (IShape d) a
+>             -> GPUGrid d b a
 
-> data GPUGrid b dyn lower upper sh x where
->     GPUGrid :: BoundaryList b (IDimension sh) x 
->             -> Array sh x
->             -> GPUGrid b dyn lower upper sh x
+> type instance ElemInv (GPUGrid sh) x = Elt x 
 
-> fromArray :: (Shape sh) =>
->             BoundaryList b (IDimension sh) y -> Array sh y -> GPUGrid b dyn lower upper sh y
-> fromArray = GPUGrid
+Convert between arrays and GPUGrid format
 
-> toArray :: Shape sh => GPUGrid b dyn lower upper sh y -> Array sh y
-> toArray (GPUGrid _ arr) = arr
+
+ toArray :: Shape sh => GPUGrid (IDimension sh) b a -> Array sh a
+ toArray (GPUGrid _ arr) = arr
 
 boundary :: (Shape sh) =>
-            GPUGrid b dyn lower upper sh y ->
+            GPUGrid sh b y ->
             BoundaryList b (IDimension sh) y
 boundary (GPUGrid b _) = b
 
@@ -100,46 +91,59 @@ boundary (GPUGrid b _) = b
 > instance Conv (Int,Int) (Z :. Int :. Int) where
 >   fromDim (x, y) = Z :. x :. y
 > instance Conv (Int,Int,Int) (Z :. Int :. Int :. Int) where
->   fromDim (x, y, z) = Z :. x :. y :. z -- (Dim _ :* Dim _ :* Dim _)
+>   fromDim (x, y, z) = Z :. x :. y :. z 
 
->instance (d ~ IDimension sh, IShape d ~ sh, Shape sh) =>
->         GridList (GPUGrid b dyn lower upper sh) d b where
->  type ListConst (GPUGrid b dyn lower upper sh) d b a =
->    (Elt a, Conv (Index d) sh)
->  type DataConst (GPUGrid b dyn lower upper sh) d b a = ()
->  listGrid dim start end ls bound = GPUGrid bound arr
->    where arr = fromList sh ls
->          sh = fromDim end
->  gridData (GPUGrid _ arr) = toList arr
->  type IxConst (GPUGrid b dyn lower upper sh) d b a = (Conv (Index d) sh)
->  (GPUGrid _ arr) !!! i = indexArray arr i'
->    where i' = fromDim i
+> instance GridConstructor GPUGrid where
 
-instance Shape sh => RunGrid (GPUGrid b dyn lower upper sh)
-                               (GPUArr sh) where
-    type RunCon (GPUGrid b dyn lower upper sh) (GPUArr sh) x y =
-      (Elt y, Stencil sh x (Stencil3x3 x), x ~ y)
-    runG (GPUArr f) g = fromArray b $ Acc.run $ sten $ use $ toArray g
-                     where sten = stencil f Clamp
-                           b = boundary g
+>  type ConstInv GPUGrid d b a = (Elt a, Shape (IShape d), Conv (Index d) (IShape d))
 
--- Old, before using type classes
-run :: forall x y d sh sten.
-    (IArray UArray x, IArray UArray y,
-    Dimension d,
-    Stencil sh x sten,
-    Elt (Index d), Elt x, Elt y,
-    (EltRepr (Index d)) ~ (EltRepr sh),
-    (IShape d) ~ sh) =>
-    (sten -> Exp y)
-    -> Grid d Nil x
-    -> Grid d Nil y
-run f (Grid arr d c (b1, b2) boundaries) =
-    Grid (toIArray res) d c (b1, b2) NilB
-    where res = Acc.run (sten_acc) :: Array sh y
-          sten_acc = stencil f (Mirror) acc
-          acc = use arr' :: Acc (Array sh x)
-          arr' = fromIArray arr :: Array sh x
+>  listGrid dim (start, end) ls bound = GPUGrid dim bound arr
+>                                         where arr = fromList sh ls
+>                                               sh = fromDim end
+
+>  type IxConst GPUGrid d b a = Conv (Index d) (IShape d)
+
+>  (GPUGrid _ _ arr) !!! i = indexArray arr (fromDim i)
+
+> instance Data (GPUGrid sh) where
+>     type DataInv (GPUGrid sh) x = ()
+
+>     getData (GPUGrid _ _ arr) = toList arr
+
+> instance Run (GPUGrid d) (GPUStencil d) where
+>
+>   type RunInv (GPUGrid d) (GPUStencil d) b x y =
+>      (Elt y) -- , Stencil (IShape d) x (Stencil3x3 x))
+
+Stencil (IShape d) x (Stencil3x3 x)) -- currently a bit restricted
+
+>   runA (GPUStencil f) (GPUGrid d b a)
+>            = GPUGrid d b (Acc.run . sten . use $ a)
+>                 where sten = stencil f Clamp
+
+>   run (GPUStencil f) (GPUGrid d b a)
+>            = GPUGrid d NilB (Acc.run . sten . use $ a)
+>                 where sten = stencil f Clamp
+
+
+> {-                       
+> runG :: forall x y d sh sten . 
+>     (IArray UArray x, IArray UArray y,
+>     Dimension d,
+>     Stencil sh x sten,
+>     Elt (Index d), Elt x, Elt y,
+>    (EltRepr (Index d)) ~ (EltRepr sh),
+>    (IShape d) ~ sh) =>
+>    (sten -> Exp y)
+>    -> Grid d Nil x
+>    -> Grid d Nil y
+> runG f (Grid arr d c (b1, b2) boundaries) =
+>     Grid (toIArray res) d c (b1, b2) NilB
+>     where res = Acc.run (sten_acc) :: Array sh y
+>           sten_acc = stencil f (Mirror) acc
+>           acc = use arr' :: Acc (Array sh x)
+>           arr' = fromIArray arr :: Array sh x
+> -}
 
 --The reduce primitive
 

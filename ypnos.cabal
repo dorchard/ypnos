@@ -16,15 +16,15 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 library
-  exposed-modules:  Ypnos, Ypnos.CUDA, Ypnos.Core.Grid,
+  exposed-modules:  Ypnos, Ypnos.Core.Grid,
                     Ypnos.Expr.Expr, Ypnos.Expr.Boundary, Ypnos.Expr.Fun, 
-                    Ypnos.CUDA.Expr.Fun, Ypnos.CUDA.Expr.Combinators, 
                     Ypnos.Core.Combinators, Ypnos.Core.Types, Ypnos.Core.Dimensions
-                    Ypnos.Core.Boundary, Ypnos.Examples.Stencils
+                    Ypnos.Core.Boundary, Ypnos.Examples.Stencils,
+                    Ypnos.Backend.CPU, Ypnos.Backend.Accelerate
   hs-source-dirs:   src
   build-depends:    base ==4.*, 
-                    accelerate ==0.12.*,
-                    template-haskell ==2.7.*, 
+                    accelerate >=0.12,
+                    template-haskell >=2.7, 
                     ghc-prim,
                     syb >=0.3,
                     array >=0.4,
@@ -54,7 +54,7 @@ benchmark main
                     criterion,
                     mtl,
                     test-framework,
-                    accelerate ==0.12.*,
+                    accelerate >=0.12,
                     array,
                     test-framework-quickcheck2,
                     QuickCheck

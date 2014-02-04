@@ -7,7 +7,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Ypnos.CUDA.Expr.Fun where
+-- Ypnos Accelerate backend by Sam Pattuzzi (2012-13)
+-- ---------------------------------------------------
+
+module Ypnos.Backend.CUDA.Expr.Fun where
 
 import Ypnos.Core.Grid
 
@@ -57,7 +60,7 @@ interpret (GridFun pat body) =
      Left x -> error x
      Right bodyExpr -> Just gridFun
          where
-           gridFun = lamE [gpat] (return bodyExpr)
+           gridFun = [| $(conE (mkName "GPUStencil")) $(lamE [gpat] (return bodyExpr)) |]
            gpat = pattern pat
 
 -- * Pattern Conversion
