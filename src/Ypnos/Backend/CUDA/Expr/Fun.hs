@@ -53,6 +53,8 @@ quoteExprPat input = do loc <- location
                         expr <- (parseExpr gridFun) pos input
                         dataToPatQ (const Nothing) expr
 
+-- idDelay = [| (\x -> x)::($(conT $ mkName "Stencil3x3") a -> $(conT $ mkName "Stencil3x3") a) |]
+
 -- |When we eventually run this is what gets evaluated.
 interpret :: GridFun -> Maybe (Q Exp)
 interpret (GridFun pat body) =
@@ -60,7 +62,7 @@ interpret (GridFun pat body) =
      Left x -> error x
      Right bodyExpr -> Just gridFun
          where
-           gridFun = [| $(conE (mkName "GPUStencil")) $(lamE [gpat] (return bodyExpr)) |]
+           gridFun = [| $(conE (mkName "GPUStencil3x3")) ($(lamE [gpat] (return bodyExpr))) |]
            gpat = pattern pat
 
 -- * Pattern Conversion

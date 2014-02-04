@@ -4,7 +4,7 @@
 Based on the Ypnos Accelerate backend by Sam Pattuzzi (2012-13)
 ---------------------------------------------------------------
 
-> module Ypnos.Backend.Accelerate(funGPU,GPUStencil(..)) where
+> module Ypnos.Backend.Accelerate(funGPU,GPUStencil(..),GPUGrid(..)) where
 
 > import Ypnos.Backend.CUDA.Expr.Fun -- Special stencil fun macro
 
@@ -63,6 +63,7 @@ Map Accelerate "shapes" to Ypnos dimensions
 
 > data GPUStencil d x y where
 >    GPUStencil :: (Stencil (IShape d) x (sten x)) => (sten x -> Exp y) -> GPUStencil d (GPUGrid d b x) y 
+>    GPUStencil3x3 :: (Stencil (IShape ((Dim d0) :* (Dim d1))) x (Stencil3x3 x)) => (Stencil3x3 x -> Exp y) -> GPUStencil ((Dim d0) :* (Dim d1)) (GPUGrid ((Dim d0) :* (Dim d1)) b x) y 
 
 > data GPUGrid d b a where
 >     GPUGrid ::

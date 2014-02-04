@@ -5,7 +5,7 @@
 >               runA, run, 
 >               reduce, runReduceSimple, mkReducer, 
 >               index,
->               getData, size,
+>               getData, 
 >               zipC,
 >               unzipC,
 

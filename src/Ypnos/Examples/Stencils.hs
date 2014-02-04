@@ -37,6 +37,7 @@ runAvg xs = I.run (stencil avg Clamp acc_xs)
 runF sten xs (x, y) = getData $ (runA sten xs')
     where xs' = listGrid (Dim X :* Dim Y) ((0, 0), (x, y)) (cycle xs) mirror
 
+avgY :: GPUStencil (Dim X :* Dim Y) (GPUGrid (Dim X :* Dim Y) b Float) Float
 avgY = [funGPU| X*Y:|a  b c|
                     |d @e f|
                     |g  h i| -> (a + b + c + d + e + f + g + h + i)/9|]
@@ -76,7 +77,7 @@ raiseToList f xs (x,y) = toList $ f arr
 -- Game of Life
 
 count :: [Exp Bool] -> Exp Int
-count = Acc.sum . (Acc.map (\ x -> x ? (1, 0)))
+count = sum . (map (\ x -> x ? (1, 0)))
 
 life = [funGPU| X*Y:| a  b  c |
                     | d @e  f |
