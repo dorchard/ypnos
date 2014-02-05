@@ -1,14 +1,52 @@
-> {-# LANGUAGE EmptyDataDecls #-}
-> {-# LANGUAGE GADTs #-}
-> {-# LANGUAGE TypeFamilies #-}
-> {-# LANGUAGE FlexibleContexts #-}
-> {-# LANGUAGE FlexibleInstances #-}
-> {-# LANGUAGE MultiParamTypeClasses #-}
-> {-# LANGUAGE FunctionalDependencies #-}
-> {-# LANGUAGE ScopedTypeVariables #-}
-> {-# LANGUAGE OverlappingInstances #-}
+ {-# LANGUAGE EmptyDataDecls #-}
+ {-# LANGUAGE GADTs #-}
+ {-# LANGUAGE TypeFamilies #-}
+ {-# LANGUAGE FlexibleContexts #-}
+ {-# LANGUAGE FlexibleInstances #-}
+ {-# LANGUAGE MultiParamTypeClasses #-}
+ {-# LANGUAGE FunctionalDependencies #-}
+ {-# LANGUAGE ScopedTypeVariables #-}
+ {-# LANGUAGE UndecidableInstances #-}
+
+> {-# LANGUAGE EmptyDataDecls, GADTs, TypeFamilies, MultiParamTypeClasses, 
+>              FlexibleContexts, FlexibleInstances, OverlappingInstances, 
+>              FunctionalDependencies, UndecidableInstances, ScopedTypeVariables #-}
+
 
 > module Ypnos.Core.Types where
+
+Predicate for enforcing safe indexing
+
+> class Safe i b
+
+1D Safety
+
+> instance Safe (IntT (Pos Zn)) b
+
+> instance (Safe (IntT (Pred n)) b,
+>           InBoundary (IntT n) b) => Safe (IntT n) b
+
+2D Safety
+
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn)) b
+
+> instance (Safe (IntT (Pred n), IntT n') b,
+>           Safe (IntT n, IntT (Pred n')) b,
+>           InBoundary (IntT n, IntT n') b) => Safe (IntT n, IntT n') b
+
+ 3D Safety
+
+> instance Safe (IntT (Pos Zn), IntT (Pos Zn), IntT (Pos Zn)) b
+
+> instance (Safe (IntT (Pred n), IntT n', IntT n'') b,
+>           Safe (IntT n, IntT (Pred n'), IntT n'') b,
+>           Safe (IntT n, IntT n', IntT (Pred n'')) b,
+>           InBoundary (IntT n, IntT n', IntT n'') b) => Safe (IntT n, IntT n', IntT n'') b
+
+> class InBoundary i ixs
+> instance InBoundary i (Cons (i, dyn) ixs)                      -- Head matches
+> instance InBoundary i ixs => InBoundary i (Cons (i', dyn) ixs) -- Head does not match, thus recurse
+
 
 Type-level annotations for "static" and "dynamic" boundaries
 
@@ -118,4 +156,14 @@ Type-level functions on numbers
 >     typeToSymIx _ = (typeToSymIx (undefined::(IntT a)), typeToSymIx (undefined::(IntT b)),
 >                                typeToSymIx (undefined::(IntT c)))
 
+Maps "absolute" index types to "relative" index types, i.e. Int -> Pos (Zn)
 
+> type family AbsToReln t
+> type instance AbsToReln Int = IntT (Pos Zn)
+> type instance AbsToReln (IntT n) = IntT n
+> type instance AbsToReln (a, b) = (AbsToReln a, AbsToReln b)
+> type instance AbsToReln (a, b, c) = (AbsToReln a, AbsToReln b, AbsToReln c)
+
+> type family Absify t
+> type instance Absify Nil = Nil
+> type instance Absify (Cons ix ixs) = Cons (AbsToReln ix) (Absify ixs)

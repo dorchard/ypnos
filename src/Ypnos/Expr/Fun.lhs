@@ -13,13 +13,15 @@
 > import Language.Haskell.Meta.Parse
 > import Ypnos.Expr.Expr
 
+> import Ypnos.Backend.CPU
+
 > import Debug.Trace
 
 > fvar = varE . mkName
 > fcon = conE . mkName
 
-> fun :: QuasiQuoter
-> fun = let ?safe = False 
+> funCPU :: QuasiQuoter
+> funCPU = let ?safe = True 
 >       in QuasiQuoter { quoteExp = quoteExprExp,
 >                        quotePat = quoteExprPat,
 >                        quoteType = undefined,
@@ -49,7 +51,7 @@
 >       Left x -> error x
 >       Right bodyExpr -> Just gridFun
 >           where
->             gridFun = lamE [gpat] (letE bindings (return bodyExpr))
+>             gridFun = [| CPUstencil $(lamE [gpat] (letE bindings (return bodyExpr))) |]
 >             gpat = varP $ mkName "reserved_grid"  
 >             bindings = interpretPattern pattern
 
@@ -70,7 +72,7 @@
  [valD (varP $ mkName v) (normalB [| $(fvar "unsafeIndex1D") x $(fvar "reserved_grid") |]) [], valD (wildP) (normalB e) []]
 
 > mkLetBind2D v x y = [valD (varP $ mkName v) (normalB
->                       [| $(fvar (if ?safe then "index2Dsafe" else "index2D"))
+>                       [| $(fvar (if ?safe then "index2D" else "unsafeIndex2D"))
 >                          ($(intToIntExp $ x), $(intToIntExp $ y)) (x, y)
 >                          $(fvar "reserved_grid")|]) []] 
 

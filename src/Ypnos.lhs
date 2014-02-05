@@ -1,12 +1,30 @@
-> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, gridData, size,
->               indexC, index1D, index2D, index3D, (!!!), unsafeIndex2D, unsafeIndex1D,
->               fun, boundary,
->               -- runUnroll, 
->               runReduceSimple, run, runA,
+> module Ypnos (grid, listGrid, gridNoBoundary, listGridNoBoundary, 
+
+
+>               -- General Ypnos combinators
+>               runA, run, 
+>               reduce, runReduceSimple, mkReducer, 
+>               index,
+>               getData, 
+>               zipC,
+>               unzipC,
+
+>               -- Grid specific
+>               indexC, index1D, index2D, index3D, (!!!), 
+
+
+>               -- Expression consutrctors
+>               funCPU, boundary, fun, 
+>               -- CPUArr(..), GPUArr(..),
+>               -- RunGrid,
+>               --RunCon, DataConst, GridList, ListConst,
+
 >               Nat(..), IntT(..), Zn, S, Neg, Pos,
 >               X(..),Y(..), Dimensionality(..), Dim, (:*),
 >               DimIdentifier,
->               Static, Dynamic
+>               BoundaryFun(..), Static, Dynamic, 
+>               BoundaryList(..), 
+>               Size(..)
 >               ) where
 
 > import Prelude hiding (iterate)
@@ -21,11 +39,8 @@
 > import Ypnos.Core.Grid
 > import Ypnos.Core.Combinators
 > import Ypnos.Core.Dimensions
-> import Ypnos.Core.Run
 > import Ypnos.Core.Types
 > import Ypnos.Core.Boundary
 
 
-
-
-
+> fun = funCPU

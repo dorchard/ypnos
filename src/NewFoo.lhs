@@ -24,6 +24,12 @@
 > import Ypnos.Core.Types
 > import Ypnos.Core.Dimensions
 
+
+ runUnroll :: (IArray UArray y, Dimension d) => 
+              (Grid d b x -> Grid' x) -> Grid d b x -> Grid d Nil y
+
+
+
 > data GridN d b cfs a where
 
     May be unecesseat
@@ -83,10 +89,15 @@ This is probably more what we want:
 >     
 >     fillValues :: IArray UArray x => (GridN d b ixs x -> y) -> Grid d b x -> GridN d b ixs x
 
+>     fillValuesA :: IArray UArray x => (GridN d b ixs x -> y) -> UArray (Index d) x -> Index d -> GridN d b ixs x
+
 > instance FillValues d HNil where
 
 >     {-# INLINE fillValues #-}
 >     fillValues f _ = Values []
+
+>     {-# INLINE fillValuesA #-}
+>     fillValuesA f _ _ = Values []
 
      fillValues2 f _ = Values []
 
@@ -95,6 +106,15 @@ This is probably more what we want:
 >     {-# INLINE fillValues #-}
 >     fillValues f g@(Grid arr d (x, y) _ _) = 
 >                                         let Values bs = fillValues ((unsafeCoerce f) :: (GridN (Dim d :* Dim d') b xs a -> b)) g 
+>                                             ixX = typeToIntIx (undefined::(IntT n))
+>                                             ixY = typeToIntIx (undefined::(IntT m))
+>                                             b = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + ixX, y + ixY))
+>                                         in Values $ ((ixX, ixY), b):bs
+
+
+>     {-# INLINE fillValuesA #-}
+>     fillValuesA f arr (x, y) = 
+>                                         let Values bs = fillValuesA ((unsafeCoerce f) :: (GridN (Dim d :* Dim d') b xs a -> b)) arr (x, y)
 >                                             ixX = typeToIntIx (undefined::(IntT n))
 >                                             ixY = typeToIntIx (undefined::(IntT m))
 >                                             b = unsafeAt arr (GHCArr.unsafeIndex (bounds arr) (x + ixX, y + ixY))
@@ -135,6 +155,18 @@ This is probably more what we want:
 >                                                  arr' = array (b1, b2) dats'
 >                                               in Grid arr' d c (b1, b2) NilB
 
+
+> runUnrollS :: (IArray UArray x, IArray UArray y, Ix (Index d), FillValues d ixs) => (GridN d b ixs x -> y) -> Grid d b x -> Grid d Nil y
+> runUnrollS f g@(Grid arr d c (b1, b2) boundaries) = let --gv' = fillValues2 f g
+>                                                  dats' = windowConcatMap2 applyFun (range (b1, b2))
+>                                                  applyFun [c'] = [(c', let gv' = fillValuesA f arr c'
+>                                                                        in f gv')]
+>                                                  applyFun [c', c''] = let gv' = fillValuesA f arr c'
+>                                                                           gv'' = fillValuesA f arr c''
+>                                                                       in [(c', f gv'), (c'', f gv'')]
+>                                                  arr' = array (b1, b2) dats'
+>                                               in Grid arr' d c (b1, b2) NilB
+
 > runOld f (Grid arr d c (b1, b2) boundaries) =
 >            let dats' = map (\c' -> (c', f (Grid arr d c' (b1, b2) boundaries))) (range (b1, b2))
 >                arr' = array (b1, b2) dats'
@@ -150,6 +182,7 @@ This is probably more what we want:
 >                   "normal" -> run laplace2D g
 >                   "new" -> run2 laplace2D2 g
 >                   "unroll" -> runUnroll laplace2D2 g
+>                   "unrollS" -> runUnrollS laplace2D2 g
 >                   _ -> error "Choose normal, new, or unroll"
 >        -- Write data to image file
 >        write_ppm ((argv!!0)++"-ypnos"++argv!!1) x y (gridData g')
@@ -180,3 +213,4 @@ First test with no unrolling
 
 -- inlined new: 1.527, 1.526, 1.536
 -- inlined new unrolled: 1.611, 1.599, 1.599
+-- inlined new unrolledS: 1.610, 1.607, 1.592
