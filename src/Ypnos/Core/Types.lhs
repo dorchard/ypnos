@@ -1,12 +1,16 @@
-> {-# LANGUAGE EmptyDataDecls #-}
-> {-# LANGUAGE GADTs #-}
-> {-# LANGUAGE TypeFamilies #-}
-> {-# LANGUAGE FlexibleContexts #-}
-> {-# LANGUAGE FlexibleInstances #-}
-> {-# LANGUAGE MultiParamTypeClasses #-}
-> {-# LANGUAGE FunctionalDependencies #-}
-> {-# LANGUAGE ScopedTypeVariables #-}
-> {-# LANGUAGE UndecidableInstances #-}
+ {-# LANGUAGE EmptyDataDecls #-}
+ {-# LANGUAGE GADTs #-}
+ {-# LANGUAGE TypeFamilies #-}
+ {-# LANGUAGE FlexibleContexts #-}
+ {-# LANGUAGE FlexibleInstances #-}
+ {-# LANGUAGE MultiParamTypeClasses #-}
+ {-# LANGUAGE FunctionalDependencies #-}
+ {-# LANGUAGE ScopedTypeVariables #-}
+ {-# LANGUAGE UndecidableInstances #-}
+
+> {-# LANGUAGE EmptyDataDecls, GADTs, TypeFamilies, MultiParamTypeClasses, 
+>              FlexibleContexts, FlexibleInstances, OverlappingInstances, 
+>              FunctionalDependencies, UndecidableInstances, ScopedTypeVariables #-}
 
 
 > module Ypnos.Core.Types where

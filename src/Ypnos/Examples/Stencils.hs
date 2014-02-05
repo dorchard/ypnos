@@ -1,9 +1,5 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE ScopedTypeVariables, NoMonomorphismRestriction #-}
+{-# LANGUAGE QuasiQuotes, FlexibleContexts, TypeOperators, GADTs, ConstraintKinds, 
+             ScopedTypeVariables, NoMonomorphismRestriction #-}
 
 module Ypnos.Examples.Stencils where
 

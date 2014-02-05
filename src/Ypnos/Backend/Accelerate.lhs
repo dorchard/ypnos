@@ -168,3 +168,11 @@ instance (Shape sh) => ReduceGrid (Array sh) where
 
 only :: Scalar a -> a
 only arr = (toList arr) !! 0
+
+> instance (DimIdentifier d) => Size (GPUGrid (Dim d)) where
+>     size (GPUGrid _ _ a) = let (Z :. x) = arrayShape a in x
+
+> instance (DimIdentifier d, DimIdentifier d') => Size (GPUGrid ((Dim d) :* (Dim d'))) where
+>     size (GPUGrid _ _ a) = let (Z :. x :. y) = arrayShape a in (x, y)
+
+(Grid _ _ _ ((lx,ly), (ux,uy)) _) = (ux-lx, uy-ly)

@@ -14,7 +14,7 @@
 
 
 >               -- Expression consutrctors
->               funCPU, boundary,
+>               funCPU, boundary, fun, 
 >               -- CPUArr(..), GPUArr(..),
 >               -- RunGrid,
 >               --RunCon, DataConst, GridList, ListConst,
@@ -42,3 +42,5 @@
 > import Ypnos.Core.Types
 > import Ypnos.Core.Boundary
 
+
+> fun = funCPU
